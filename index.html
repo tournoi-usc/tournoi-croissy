@@ -194,9 +194,20 @@ function showTab(name,el){
 }
 
 // ── STANDINGS
+function getH2HPts(pi,names){
+  const pts={};names.forEach(n=>pts[n]=0);
+  (state.poolMatches[pi]||[]).forEach(m=>{
+    if(!m.played||!names.includes(m.home)||!names.includes(m.away)) return;
+    const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;
+    if(h>a){pts[m.home]=(pts[m.home]||0)+3;}
+    else if(a>h){pts[m.away]=(pts[m.away]||0)+3;}
+    else{pts[m.home]=(pts[m.home]||0)+1;pts[m.away]=(pts[m.away]||0)+1;}
+  });
+  return pts;
+}
 function getStandings(pi){
   const pool=state.poolList[pi],s={};
-  pool.forEach(n=>s[n]={name:n,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0});
+  pool.forEach(n=>s[n]={name:n,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,tiedWith:[]});
   (state.poolMatches[pi]||[]).forEach(m=>{
     if(!m.played) return;
     const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;
@@ -207,7 +218,29 @@ function getStandings(pi){
     else if(a>h){s[m.away].W++;s[m.away].Pts+=3;s[m.home].L++;}
     else{s[m.home].D++;s[m.home].Pts++;s[m.away].D++;s[m.away].Pts++;}
   });
-  return Object.values(s).sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
+  const rows=Object.values(s);
+  rows.sort((a,b)=>{
+    if(b.Pts!==a.Pts) return b.Pts-a.Pts;
+    const h2h=getH2HPts(pi,[a.name,b.name]);
+    if((h2h[a.name]||0)!==(h2h[b.name]||0)) return (h2h[b.name]||0)-(h2h[a.name]||0);
+    if(b.GF!==a.GF) return b.GF-a.GF;
+    if(a.GA!==b.GA) return a.GA-b.GA;
+    const key=`${pi}|${[a.name,b.name].sort().join('|')}`;
+    const pp=(state.poolPenos||{})[key]||{};
+    const aP=parseInt(pp[a.name]),bP=parseInt(pp[b.name]);
+    if(!isNaN(aP)&&!isNaN(bP)&&aP!==bP) return bP-aP;
+    return 0;
+  });
+  // Mark tied pairs
+  for(let i=0;i<rows.length;i++) rows[i].tiedWith=[];
+  for(let i=0;i<rows.length;i++) for(let j=i+1;j<rows.length;j++){
+    const a=rows[i],b=rows[j];
+    const h2h=getH2HPts(pi,[a.name,b.name]);
+    if(a.Pts===b.Pts&&(h2h[a.name]||0)===(h2h[b.name]||0)&&a.GF===b.GF&&a.GA===b.GA){
+      a.tiedWith.push(b.name);b.tiedWith.push(a.name);
+    }
+  }
+  return rows;
 }
 
 function getW(id,t1,t2){
@@ -272,10 +305,20 @@ function renderClassements(){
       const allTeams=state.poolList.flat();
       const tIdx=allTeams.indexOf(r.name);
       const dot=(state.teamColors&&state.teamColors[tIdx])||DC[tIdx%DC.length];
+      // Check TAB win
+      const pp=state.poolPenos||{};
+      const tabWin=r.tiedWith&&r.tiedWith.length>0&&r.tiedWith.some(opp=>{
+        const key=`${pi}|${[r.name,opp].sort().join('|')}`;
+        const p2=pp[key]||{};
+        const myP=parseInt(p2[r.name]),opP=parseInt(p2[opp]);
+        return !isNaN(myP)&&!isNaN(opP)&&myP>opP;
+      });
+      const tabTag=tabWin?'<span style="font-size:8px;background:#f0c040;color:#1a1a1a;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:700">TAB</span>':'';
+      const tieTag=(r.tiedWith&&r.tiedWith.length&&!tabWin)?'<span style="font-size:9px;color:var(--gold);margin-left:3px">⚡</span>':'';
       html+=`<div class="team-row">
         <div class="t-rank">${i+1}</div>
         <div class="t-dot" style="background:${dot}"></div>
-        <div class="t-name">${r.name}</div>
+        <div class="t-name">${r.name}${tabTag}${tieTag}</div>
         <div class="t-stats">${r.P}J · ${r.GF}:${r.GA}</div>
         <div><div class="t-pts">${r.Pts}</div><div class="t-ptslbl">pts</div></div>
       </div>`;
