@@ -85,6 +85,7 @@
     .waiting .ico{font-size:40px;margin-bottom:10px;display:block;animation:spin 3s linear infinite}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -123,27 +124,57 @@ const DC=['#3498db','#9b59b6','#2ecc71','#e74c3c','#f39c12','#1abc9c','#e67e22',
 
 const SB_URL='https://vtfkyttokglllqmvngow.supabase.co';
 const SB_KEY='sb_publishable_t4HfrK9bjWwEF6BYKn2X9w_mxx45bms';
+const TABLE='"Tournoi-USC"';
 
 let state=null;
 
-// ── SUPABASE REALTIME
+// ── SUPABASE REALTIME STREAMING
 async function initSupabase(){
-  // Initial fetch
+  // 1. Fetch initial state
   await fetchState();
-  // Poll every 3 seconds (Supabase Realtime websocket needs the JS client lib;
-  // polling is simpler and reliable for this use case)
-  setInterval(fetchState, 3000);
+  // 2. Subscribe to realtime changes via Supabase JS client (loaded via CDN)
+  const { createClient } = supabase;
+  const sb = createClient(SB_URL, SB_KEY);
+  sb.channel('tournoi-realtime')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'Tournoi-USC',
+      filter: 'id=eq.1'
+    }, payload => {
+      try{
+        const parsed = JSON.parse(payload.new.payload);
+        state = parsed;
+        applyTheme();
+        render();
+        showConnected();
+      }catch(e){ console.warn('Parse error:', e); }
+    })
+    .subscribe(status => {
+      console.log('Realtime status:', status);
+      if(status === 'SUBSCRIBED') showConnected();
+      if(status === 'CHANNEL_ERROR') {
+        // Fallback to polling if WS fails
+        console.warn('WS failed, falling back to polling');
+        setInterval(fetchState, 4000);
+      }
+    });
+}
+
+function showConnected(){
+  const dot = document.querySelector('.live-dot');
+  if(dot) dot.style.background = '#2ecc71'; // green when connected
+  setTimeout(() => { if(dot) dot.style.background = '#ff4444'; }, 1000);
 }
 
 async function fetchState(){
   try{
-    const r=await fetch(SB_URL+'/rest/v1/tournoi_state?id=eq.1&select=payload,updated_at',{
+    const r=await fetch(SB_URL+'/rest/v1/'+'Tournoi-USC?id=eq.1&select=payload',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
     const data=await r.json();
     if(data&&data[0]&&data[0].payload){
       const parsed=JSON.parse(data[0].payload);
-      // Only re-render if state actually changed
       if(JSON.stringify(parsed)!==JSON.stringify(state)){
         state=parsed;
         applyTheme();
