@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+  <title>Tournoi Croissy — Live</title>
+  <style>
+    :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
+    [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    /* Header */
+    .hdr{background:#161b26;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+    [data-theme="light"] .hdr{background:var(--green)}
+    .hdr img{height:36px;width:36px;object-fit:contain;flex-shrink:0}
+    .hdr-info{flex:1}
+    .hdr h1{font-size:16px;font-weight:800}
+    .hdr p{font-size:10px;opacity:.7;margin-top:1px}
+    .live-wrap{display:flex;align-items:center;gap:5px}
+    .live-dot{width:8px;height:8px;background:#ff4444;border-radius:50%;animation:pulse 1.2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .live-txt{font-size:10px;opacity:.7;font-weight:600}
+    /* Tabs */
+    .tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99}
+    .tab{flex:1;padding:11px 6px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:.15s;text-align:center}
+    .tab.active{color:var(--green);border-bottom-color:var(--green)}
+    /* Sections */
+    .section{display:none;padding:12px}.section.active{display:block}
+    /* Pool cards */
+    .pool-card{background:var(--bg2);border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
+    .pool-hdr{padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--bg3)}
+    .pool-letter{font-size:16px;font-weight:900;color:var(--gold)}
+    .pool-name{font-size:13px;font-weight:800}
+    .pool-terrain{font-size:10px;color:var(--text3);margin-left:auto}
+    .team-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bg3)}
+    .team-row:last-child{border-bottom:none}
+    .t-rank{font-size:12px;font-weight:700;color:var(--text3);width:16px;flex-shrink:0}
+    .t-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .t-name{flex:1;font-size:13px;font-weight:700}
+    .t-stats{font-size:10px;color:var(--text3);margin-right:6px}
+    .t-pts{font-size:16px;font-weight:900}
+    .t-ptslbl{font-size:8px;color:var(--text3)}
+    /* Schedule */
+    .sched-slot{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px}
+    .sched-hdr{padding:6px 10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:8px;background:var(--bg3);color:var(--text2)}
+    .sched-hdr.active{background:var(--gold);color:#1a1a1a}
+    .sched-hdr.done{background:var(--green-l);color:var(--green)}
+    .sched-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--bg3)}
+    .sched-row:last-child{border-bottom:none}
+    .sr-bar{width:3px;height:26px;border-radius:2px;flex-shrink:0}
+    .sr-info{flex-shrink:0;min-width:52px}
+    .sr-t{font-size:9px;font-weight:700;color:var(--text3)}
+    .sr-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block;margin-top:1px}
+    .sr-pool{background:var(--blue-l);color:var(--blue)}
+    .sr-ko{background:var(--gold-l);color:var(--gold)}
+    .sr-teams{flex:1;display:flex;align-items:center;gap:5px}
+    .sr-team{flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sr-team.right{text-align:right}
+    .sr-score{font-size:13px;font-weight:900;color:var(--text3);min-width:32px;text-align:center;flex-shrink:0}
+    .sr-score.live{color:var(--gold)}
+    .pause-row{background:var(--gold-l);border:1px solid var(--gold);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:8px}
+    /* KO bracket */
+    .ko-round{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px}
+    .ko-round-hdr{padding:6px 10px;font-size:11px;font-weight:700;background:var(--bg3);color:var(--text2)}
+    .ko-round-hdr.active{background:var(--gold);color:#1a1a1a}
+    .ko-round-hdr.done{background:var(--green-l);color:var(--green)}
+    .ko-match-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--bg3)}
+    .ko-match-row:last-child{border-bottom:none}
+    .ko-lvl{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--gold-l);color:var(--gold);flex-shrink:0;white-space:nowrap}
+    .ko-team{flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ko-team.right{text-align:right}
+    .ko-score{font-size:13px;font-weight:900;min-width:34px;text-align:center;flex-shrink:0;color:var(--text3)}
+    .ko-score.done{color:var(--text)}
+    /* Champion banner */
+    .champion{background:linear-gradient(135deg,#1a2a0d,#2a3d00);border:2px solid var(--gold);border-radius:12px;padding:14px;text-align:center;margin-bottom:12px}
+    .champion .trophy{font-size:32px;display:block;margin-bottom:5px}
+    .champion .title{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em}
+    .champion .name{font-size:20px;font-weight:900;color:#fff;margin:3px 0}
+    .champion .congrats{font-size:11px;color:var(--gold);opacity:.8}
+    /* Pool colors */
+    .p0{background:var(--blue-l);color:var(--blue)}.p1{background:var(--green-l);color:var(--green)}
+    .p2{background:#fff0e8;color:#c8600a}[data-theme="dark"] .p2{background:#3d1a00;color:#e8922a}
+    .p3{background:#f0e8ff;color:#7040c0}[data-theme="dark"] .p3{background:#1a003d;color:#a06be8}
+    .waiting{text-align:center;padding:40px 20px;color:var(--text3)}
+    .waiting .ico{font-size:40px;margin-bottom:10px;display:block;animation:spin 3s linear infinite}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <img src="logo.png" alt="USC" onerror="this.style.display='none'">
+  <div class="hdr-info">
+    <h1>Tournoi Croissy</h1>
+    <p id="hdr-sub">En attente...</p>
+  </div>
+  <div class="live-wrap">
+    <div class="live-dot"></div>
+    <span class="live-txt">LIVE</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('classements',this)">📊 Classements</button>
+  <button class="tab" onclick="showTab('resultats',this)">📋 Résultats</button>
+  <button class="tab" onclick="showTab('finale',this)">⚡ Phase finale</button>
+</div>
+
+<div id="tab-classements" class="section active">
+  <div class="waiting"><span class="ico">⚽</span>En attente du tournoi...</div>
+</div>
+<div id="tab-resultats" class="section">
+  <div class="waiting"><span class="ico">📋</span>En attente des matchs...</div>
+</div>
+<div id="tab-finale" class="section">
+  <div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>
+</div>
+
+<script>
+const PL='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const TC=['#e74c3c','#3498db','#f39c12','#9b59b6','#1abc9c','#e67e22','#2ecc71','#e91e63'];
+const DC=['#3498db','#9b59b6','#2ecc71','#e74c3c','#f39c12','#1abc9c','#e67e22','#e91e63','#34495e','#16a085','#8e44ad','#2980b9','#27ae60','#c0392b','#d35400','#95a5a6','#f1c40f','#00bcd4','#ff5722','#607d8b','#8bc34a','#ff9800'];
+
+const SB_URL='https://vtfkyttokglllqmvngow.supabase.co';
+const SB_KEY='sb_publishable_t4HfrK9bjWwEF6BYKn2X9w_mxx45bms';
+
+let state=null;
+
+// ── SUPABASE REALTIME
+async function initSupabase(){
+  // Initial fetch
+  await fetchState();
+  // Poll every 3 seconds (Supabase Realtime websocket needs the JS client lib;
+  // polling is simpler and reliable for this use case)
+  setInterval(fetchState, 3000);
+}
+
+async function fetchState(){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/tournoi_state?id=eq.1&select=payload,updated_at',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    const data=await r.json();
+    if(data&&data[0]&&data[0].payload){
+      const parsed=JSON.parse(data[0].payload);
+      // Only re-render if state actually changed
+      if(JSON.stringify(parsed)!==JSON.stringify(state)){
+        state=parsed;
+        applyTheme();
+        render();
+      }
+    }
+  }catch(e){console.warn('Fetch error:',e);}
+}
+
+function applyTheme(){document.documentElement.setAttribute('data-theme',state?.theme||'dark');}
+
+function showTab(name,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+// ── STANDINGS
+function getStandings(pi){
+  const pool=state.poolList[pi],s={};
+  pool.forEach(n=>s[n]={name:n,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0});
+  (state.poolMatches[pi]||[]).forEach(m=>{
+    if(!m.played) return;
+    const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;
+    s[m.home].P++;s[m.away].P++;
+    s[m.home].GF+=h;s[m.home].GA+=a;s[m.home].GD+=h-a;
+    s[m.away].GF+=a;s[m.away].GA+=h;s[m.away].GD+=a-h;
+    if(h>a){s[m.home].W++;s[m.home].Pts+=3;s[m.away].L++;}
+    else if(a>h){s[m.away].W++;s[m.away].Pts+=3;s[m.home].L++;}
+    else{s[m.home].D++;s[m.home].Pts++;s[m.away].D++;s[m.away].Pts++;}
+  });
+  return Object.values(s).sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
+}
+
+function getW(id,t1,t2){
+  const m=state.km?.[id];if(!m||m.played!==true)return'?';
+  const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;
+  if(h>a)return t1;if(a>h)return t2;
+  if(m.hp!==''&&m.hp!==undefined&&m.ap!==''&&m.ap!==undefined){const hp=parseInt(m.hp),ap=parseInt(m.ap);if(hp!==ap)return hp>ap?t1:t2;}
+  return'?';
+}
+function getL(id,t1,t2){const w=getW(id,t1,t2);return w==='?'?'?':w===t1?t2:t1;}
+
+function getKOBracket(){
+  if(!state.poolList?.length||!state.poolMatches?.length) return null;
+  const standings=state.poolList.map((_,pi)=>getStandings(pi));
+  if(!standings[0]?.length) return null;
+  const poolSize=standings[0].length;
+  const poolDone=state.poolMatches.every(pms=>pms.every(m=>m.played));
+  const a=poolDone?standings[0]:[], b=poolDone?(standings[1]||standings[0]):[];
+  const qf=[];
+  for(let r=0;r<Math.floor(poolSize/2);r++){
+    qf.push({id:`qf${r*2}`,label:`${r+1}e A vs ${poolSize-r}e B`,t1:a[r]?.name||'?',t2:b[poolSize-1-r]?.name||'?'});
+    qf.push({id:`qf${r*2+1}`,label:`${r+1}e B vs ${poolSize-r}e A`,t1:b[r]?.name||'?',t2:a[poolSize-1-r]?.name||'?'});
+  }
+  const n=qf.length;
+  const sf=[],sfl=[];
+  for(let i=0;i<n/2;i++){
+    const qa=qf[i],qb=qf[n-1-i];
+    sf.push({id:`sfW${i}`,label:`Demi ${i+1}`,t1:getW(qa.id,qa.t1,qa.t2),t2:getW(qb.id,qb.t1,qb.t2)});
+    sfl.push({id:`sfL${i}`,label:`Demi consol. ${i+1}`,t1:getL(qa.id,qa.t1,qa.t2),t2:getL(qb.id,qb.t1,qb.t2)});
+  }
+  const sw0=sf[0]||{id:'sfW0',t1:'?',t2:'?'},sw1=sf[1]||{id:'sfW1',t1:'?',t2:'?'};
+  const sl0=sfl[0]||{id:'sfL0',t1:'?',t2:'?'},sl1=sfl[1]||{id:'sfL1',t1:'?',t2:'?'};
+  const finals=[
+    {id:'final',label:'🏆 Finale',t1:getW(sw0.id,sw0.t1,sw0.t2),t2:getW(sw1.id,sw1.t1,sw1.t2)},
+    {id:'third',label:'🥉 3e place',t1:getL(sw0.id,sw0.t1,sw0.t2),t2:getL(sw1.id,sw1.t1,sw1.t2)},
+    {id:'consolef',label:'🏅 Finale consolante',t1:getW(sl0.id,sl0.t1,sl0.t2),t2:getW(sl1.id,sl1.t1,sl1.t2)},
+    {id:'consolet',label:'🏅 3e consolante',t1:getL(sl0.id,sl0.t1,sl0.t2),t2:getL(sl1.id,sl1.t1,sl1.t2)},
+  ];
+  return {qf,sf,sfl,finals,poolDone};
+}
+
+// ── RENDER
+function render(){
+  if(!state||!state.poolList?.length) return;
+  document.getElementById('hdr-sub').textContent=`${state.N} équipes · ${state.poolList.length} poule(s)`;
+  renderClassements();
+  renderResultats();
+  renderFinale();
+}
+
+function renderClassements(){
+  let html='';
+  state.poolList.forEach((pool,pi)=>{
+    const rows=getStandings(pi);
+    const tNums=(state.poolTerrains?.[pi]||[]).map(t=>t+1);
+    html+=`<div class="pool-card"><div class="pool-hdr">
+      <div class="pool-letter">${PL[pi]}</div>
+      <div class="pool-name">Groupe ${PL[pi]}</div>
+      ${tNums.length?`<div class="pool-terrain">T${tNums.join(', ')}</div>`:''}
+    </div>`;
+    rows.forEach((r,i)=>{
+      const allTeams=state.poolList.flat();
+      const tIdx=allTeams.indexOf(r.name);
+      const dot=(state.teamColors&&state.teamColors[tIdx])||DC[tIdx%DC.length];
+      html+=`<div class="team-row">
+        <div class="t-rank">${i+1}</div>
+        <div class="t-dot" style="background:${dot}"></div>
+        <div class="t-name">${r.name}</div>
+        <div class="t-stats">${r.P}J · ${r.GF}:${r.GA}</div>
+        <div><div class="t-pts">${r.Pts}</div><div class="t-ptslbl">pts</div></div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('tab-classements').innerHTML=html||'<div class="waiting"><span class="ico">⚽</span>En attente...</div>';
+}
+
+function renderResultats(){
+  const creneaux=state.creneaux||[];
+  if(!creneaux.length){document.getElementById('tab-resultats').innerHTML='<div class="waiting">Aucun match planifié.</div>';return;}
+  let html='',ci=0;
+  creneaux.forEach((c,idx)=>{
+    if(c.type==='pause'){
+      const h=Math.floor(c.start/60),m=c.start%60;
+      html+=`<div class="pause-row">🍽 Pause déjeuner — ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} (${c.dur} min)</div>`;
+      return;
+    }
+    ci++;
+    const isCur=idx===state.currentCreneau,isDone=c.done;
+    const hdrCls=isDone?'sched-hdr done':isCur?'sched-hdr active':'sched-hdr';
+    html+=`<div class="sched-slot"><div class="${hdrCls}">${isDone?'✓':isCur?'▶':ci+'.'} C${ci} · ${c.startTime||''}<span style="margin-left:auto;font-size:9px;opacity:.8">${c.matches.length}m</span></div>`;
+    c.matches.forEach(ref=>{
+      const m=state.poolMatches?.[ref.pi]?.[ref.mi];if(!m) return;
+      const tc=TC[(ref.terrain||0)%TC.length];
+      const score=`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`;
+      const scoreCls=isCur&&!isDone?'sr-score live':'sr-score';
+      html+=`<div class="sched-row">
+        <div class="sr-bar" style="background:${tc}"></div>
+        <div class="sr-info"><div class="sr-t">T${(ref.terrain||0)+1}</div><span class="sr-badge sr-pool">Poule ${PL[ref.pi]||''}</span></div>
+        <div class="sr-teams">
+          <span class="sr-team right">${m.home}</span>
+          <span class="${scoreCls}">${score}</span>
+          <span class="sr-team">${m.away}</span>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('tab-resultats').innerHTML=html;
+}
+
+function renderFinale(){
+  const bracket=getKOBracket();
+  const el=document.getElementById('tab-finale');
+  if(!bracket){el.innerHTML='<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';return;}
+
+  let html='';
+  const koc=state.koCreneaux||[];
+  const qfTime=koc[0]?.startTime||'';
+  const sfTime=koc[1]?.startTime||'';
+  const finTime=koc[koc.length-1]?.startTime||'';
+
+  // Champion banner
+  const finalTeams=bracket.finals.find(f=>f.id==='final');
+  const champion=finalTeams?getW('final',finalTeams.t1,finalTeams.t2):null;
+  if(champion&&champion!=='?'){
+    html+=`<div class="champion"><span class="trophy">🏆</span><div class="title">Champion du Tournoi</div><div class="name">${champion}</div><div class="congrats">🎉 Félicitations ! 🎉</div></div>`;
+  }
+
+  const poolsDone=bracket.poolDone;
+  const qfDone=bracket.qf.every(m=>state.km?.[m.id]?.played);
+  const sfAll=[...bracket.sf,...bracket.sfl];
+  const sfDone=sfAll.every(m=>state.km?.[m.id]?.played);
+  const finDone=bracket.finals.every(m=>state.km?.[m.id]?.played);
+
+  html+=koRound('⚡ Quarts de finale',bracket.qf,qfDone,poolsDone&&!qfDone,qfTime);
+  html+=koRound('⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,sfTime);
+  html+=koRound('🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,finTime);
+
+  el.innerHTML=html;
+}
+
+function koRound(title,matches,done,active,time){
+  const cls=done?'ko-round-hdr done':active?'ko-round-hdr active':'ko-round-hdr';
+  const timeTag=time?` <span style="font-weight:400;opacity:.75;font-size:9px">· ${time}</span>`:'';
+  let html=`<div class="ko-round"><div class="${cls}">${done?'✓ ':active?'▶ ':''}${title}${timeTag}</div>`;
+  matches.forEach(m=>{
+    const mDone=state.km?.[m.id]?.played===true;
+    const w=mDone?getW(m.id,m.t1,m.t2):'';
+    const hs=mDone?parseInt(state.km[m.id].hs)||0:'?';
+    const as=mDone?parseInt(state.km[m.id].as)||0:'?';
+    const score=mDone?`${hs} : ${as}`:'? : ?';
+    html+=`<div class="ko-match-row">
+      <span class="ko-lvl">${m.label}</span>
+      <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${m.t1||'?'}</span>
+      <span class="ko-score${mDone?' done':''}">${score}</span>
+      <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${m.t2||'?'}</span>
+    </div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+// Start
+initSupabase();
+</script>
+</body>
+</html>
