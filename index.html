@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Croissy — Live</title>
+  <title>Tournoi Nini — Live</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -92,7 +92,7 @@
 <div class="hdr">
   <img src="logo.png" alt="USC" onerror="this.style.display='none'">
   <div class="hdr-info">
-    <h1>Tournoi Croissy</h1>
+    <h1>Tournoi Nini</h1>
     <p id="hdr-sub">En attente...</p>
   </div>
   <div class="live-wrap">
@@ -119,6 +119,7 @@
 
 <script>
 const PL='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 const TC=['#e74c3c','#3498db','#f39c12','#9b59b6','#1abc9c','#e67e22','#2ecc71','#e91e63'];
 const DC=['#3498db','#9b59b6','#2ecc71','#e74c3c','#f39c12','#1abc9c','#e67e22','#e91e63','#34495e','#16a085','#8e44ad','#2980b9','#27ae60','#c0392b','#d35400','#95a5a6','#f1c40f','#00bcd4','#ff5722','#607d8b','#8bc34a','#ff9800'];
 
@@ -127,6 +128,8 @@ const SB_KEY='sb_publishable_t4HfrK9bjWwEF6BYKn2X9w_mxx45bms';
 const TABLE='"Tournoi-USC"';
 
 let state=null;
+let _pollTimer=null;
+let _lastUpdatedAt=null;
 
 // ── SUPABASE REALTIME STREAMING
 async function initSupabase(){
@@ -151,12 +154,10 @@ async function initSupabase(){
       }catch(e){ console.warn('Parse error:', e); }
     })
     .subscribe(status => {
-      console.log('Realtime status:', status);
-      if(status === 'SUBSCRIBED') showConnected();
+      if(status === 'SUBSCRIBED'){showConnected();clearInterval(_pollTimer);_pollTimer=null;}
       if(status === 'CHANNEL_ERROR') {
-        // Fallback to polling if WS fails
         console.warn('WS failed, falling back to polling');
-        setInterval(fetchState, 4000);
+        if(!_pollTimer) _pollTimer=setInterval(fetchState, 4000);
       }
     });
 }
@@ -169,14 +170,15 @@ function showConnected(){
 
 async function fetchState(){
   try{
-    const r=await fetch(SB_URL+'/rest/v1/'+'Tournoi-USC?id=eq.1&select=payload',{
+    const r=await fetch(SB_URL+'/rest/v1/'+'Tournoi-USC?id=eq.1&select=payload,updated_at',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
     const data=await r.json();
     if(data&&data[0]&&data[0].payload){
-      const parsed=JSON.parse(data[0].payload);
-      if(JSON.stringify(parsed)!==JSON.stringify(state)){
-        state=parsed;
+      const newAt=data[0].updated_at||'';
+      if(newAt!==_lastUpdatedAt||!state){
+        _lastUpdatedAt=newAt;
+        state=JSON.parse(data[0].payload);
         applyTheme();
         render();
       }
@@ -284,6 +286,7 @@ function getKOBracket(){
 
 // ── RENDER
 function render(){
+  if(state&&state.cats&&state.cats.length>=1){renderDualCatMobile(state);return;}
   if(!state||!state.poolList?.length) return;
   document.getElementById('hdr-sub').textContent=`${state.N} équipes · ${state.poolList.length} poule(s)`;
   renderClassements();
@@ -318,7 +321,7 @@ function renderClassements(){
       html+=`<div class="team-row">
         <div class="t-rank">${i+1}</div>
         <div class="t-dot" style="background:${dot}"></div>
-        <div class="t-name">${r.name}${tabTag}${tieTag}</div>
+        <div class="t-name">${esc(r.name)}${tabTag}${tieTag}</div>
         <div class="t-stats">${r.P}J · ${r.GF}:${r.GA}</div>
         <div><div class="t-pts">${r.Pts}</div><div class="t-ptslbl">pts</div></div>
       </div>`;
@@ -377,7 +380,7 @@ function renderFinale(){
   const finalTeams=bracket.finals.find(f=>f.id==='final');
   const champion=finalTeams?getW('final',finalTeams.t1,finalTeams.t2):null;
   if(champion&&champion!=='?'){
-    html+=`<div class="champion"><span class="trophy">🏆</span><div class="title">Champion du Tournoi</div><div class="name">${champion}</div><div class="congrats">🎉 Félicitations ! 🎉</div></div>`;
+    html+=`<div class="champion"><span class="trophy">🏆</span><div class="title">Champion du Tournoi</div><div class="name">${esc(champion)}</div><div class="congrats">🎉 Félicitations ! 🎉</div></div>`;
   }
 
   const poolsDone=bracket.poolDone;
@@ -405,9 +408,9 @@ function koRound(title,matches,done,active,time){
     const score=mDone?`${hs} : ${as}`:'? : ?';
     html+=`<div class="ko-match-row">
       <span class="ko-lvl">${m.label}</span>
-      <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${m.t1||'?'}</span>
+      <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${esc(m.t1)||'?'}</span>
       <span class="ko-score${mDone?' done':''}">${score}</span>
-      <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${m.t2||'?'}</span>
+      <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${esc(m.t2)||'?'}</span>
     </div>`;
   });
   html+='</div>';
@@ -416,6 +419,202 @@ function koRound(title,matches,done,active,time){
 
 // Start
 initSupabase();
+
+// ── DUAL-CAT MOBILE : fonctions complètes
+const _CM=['#2ecc71','#e67e22'];
+function bothPoolsDoneM(st){return st.cats.every(cat=>cat.poolMatches?.every(pms=>pms.every(m=>m.played)));}
+
+function renderDualCatMobile(st){
+  if(st.theme) document.documentElement.setAttribute('data-theme',st.theme);
+  const names=st.cats.map(c=>c.name||'Cat').join(' / ');
+  const sub=document.getElementById('hdr-sub');if(sub) sub.textContent=names;
+
+  const koDone=bothPoolsDoneM(st);
+  if(koDone){
+    // Auto-switch to Phase finale tab
+    const tabs=document.querySelectorAll('.tab-btn');
+    tabs.forEach(t=>{
+      if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes('finale')){
+        if(!t.classList.contains('active')) t.click();
+      }
+    });
+    renderFinaleDual(st);
+    renderClassementsComplet(st);
+  } else {
+    renderClassementsDual(st);
+    renderResultatsDual(st);
+    renderFinaleDual(st);
+  }
+}
+
+// ── Classements (phase poule)
+function renderClassementsDual(st){
+  const el=document.getElementById('tab-classements');if(!el) return;
+  let html='',any=false;
+  st.cats.forEach((cat,ci)=>{
+    if(!cat.poolList?.length||!cat.started) return;
+    any=true;const col=_CM[ci];
+    html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">${esc(cat.name)}</div>`;
+    cat.poolList.forEach((pool,pi)=>{
+      const rows=getStandCat(cat,pi);
+      const tNums=(cat.poolTerrains?.[pi]||[]).map(t=>t+1);
+      html+=`<div class="pool-card"><div class="pool-hdr">
+        <div class="pool-letter" style="color:${col}">${PL[pi]}</div>
+        <div class="pool-name">${esc(cat.name)} · Poule ${PL[pi]}</div>
+        ${tNums.length?`<div class="pool-terrain">T${tNums.join(', ')}</div>`:''}
+      </div>`;
+      rows.forEach((r,i)=>{
+        const all=cat.poolList.flat(),tIdx=all.indexOf(r.name);
+        const dot=(cat.teamColors&&cat.teamColors[tIdx])||DC[tIdx%DC.length];
+        const tabWin=r.tiedWith?.some(opp=>{const key=`${pi}|${[r.name,opp].sort().join('|')}`;const p2=(cat.poolPenos||{})[key]||{};const myP=parseInt(p2[r.name]),opP=parseInt(p2[opp]);return !isNaN(myP)&&!isNaN(opP)&&myP>opP;});
+        html+=`<div class="team-row">
+          <div class="t-rank">${i+1}</div>
+          <div class="t-dot" style="background:${dot}"></div>
+          <div class="t-name">${esc(r.name)}${tabWin?'<span style="font-size:8px;background:#f0c040;color:#000;padding:1px 4px;border-radius:3px;margin-left:4px">TAB</span>':''}</div>
+          <div class="t-stats">${r.P}J ${r.GF}:${r.GA}</div>
+          <div class="t-pts">${r.Pts}</div><div class="t-ptslbl">pts</div>
+        </div>`;
+      });
+      html+='</div>';
+    });
+  });
+  el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚽</span>En attente du tournoi...</div>';
+}
+
+// ── Classements terminés (phase KO)
+function renderClassementsComplet(st){
+  const el=document.getElementById('tab-classements');if(!el) return;
+  let html='';
+  st.cats.forEach((cat,ci)=>{
+    if(!cat.poolList?.length) return;
+    const col=_CM[ci];
+    html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">✓ ${esc(cat.name)} — Poules terminées</div>`;
+    cat.poolList.forEach((pool,pi)=>{
+      const rows=getStandCat(cat,pi);
+      html+=`<div class="pool-card"><div class="pool-hdr"><div class="pool-letter" style="color:${col}">${PL[pi]}</div><div class="pool-name">Poule ${PL[pi]} — Final</div></div>`;
+      rows.forEach((r,i)=>{
+        const medals=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'];
+        const all=cat.poolList.flat(),tIdx=all.indexOf(r.name);
+        const dot=(cat.teamColors&&cat.teamColors[tIdx])||DC[tIdx%DC.length];
+        html+=`<div class="team-row"><div class="t-rank">${medals[i]||i+1}</div><div class="t-dot" style="background:${dot}"></div><div class="t-name">${esc(r.name)}</div><div class="t-stats">${r.GF}:${r.GA}</div><div class="t-pts">${r.Pts}</div><div class="t-ptslbl">pts</div></div>`;
+      });
+      html+='</div>';
+    });
+  });
+  el.innerHTML=html||'<div class="waiting"><span class="ico">📊</span>Poules en cours...</div>';
+}
+
+// ── Résultats (phase poule)
+function renderResultatsDual(st){
+  const el=document.getElementById('tab-resultats');if(!el) return;
+  const allC=[...(st.globalCreneaux||[]),...(st.globalKOCreneaux||[])];
+  if(!allC.length){el.innerHTML='<div class="waiting"><span class="ico">📋</span>En attente des matchs...</div>';return;}
+  let html='',ci2=0;
+  allC.forEach((c,idx)=>{
+    if(c.type==='pause'){
+      const hh=Math.floor((c.start||0)/60),mm=(c.start||0)%60;
+      html+=`<div class="pause-row">🍽 Déjeuner — ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} (${c.dur} min)</div>`;
+      return;
+    }
+    if(c.isKO) return; // pendant phase poule, pas de KO
+    ci2++;
+    const isCurrent=idx===st.currentCreneau,isDone=c.done;
+    const cat=st.cats?.[c.ci];const catCol=_CM[c.ci]||'#fff';
+    const hdrCls=isDone?'sched-hdr done':isCurrent?'sched-hdr active':'sched-hdr';
+    html+=`<div class="sched-slot"><div class="${hdrCls}">
+      ${isDone?'✓':isCurrent?'▶':ci2+'.'} C${ci2} ${c.startTime?'· '+c.startTime:''}
+      <span style="background:${catCol};color:#fff;font-size:8px;font-weight:800;padding:1px 6px;border-radius:3px;margin-left:5px">${esc(cat?.name||'?')}</span>
+    </div>`;
+    (c.matches||[]).forEach(ref=>{
+      const tc=TC[(ref.terrain||0)%TC.length];
+      const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
+      const home=m?.home||'?',away=m?.away||'?';
+      const hs=parseInt(m?.hs)||0,as=parseInt(m?.as)||0,played=m?.played;
+      const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
+      html+=`<div class="sched-row">
+        <div class="sr-bar" style="background:${tc}"></div>
+        <div class="sr-info"><div class="sr-t">T${(ref.terrain||0)+1}</div><span class="sr-badge sr-pool">Poule ${PL[ref.pi]||''}</span></div>
+        <div class="sr-teams">
+          <span class="sr-team right">${esc(home)}</span>
+          <span class="${scoreCls}">${played?hs+' : '+as:'? : ?'}</span>
+          <span class="sr-team">${esc(away)}</span>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html||'<div class="waiting"><span class="ico">📋</span>En attente des matchs...</div>';
+  const cur=el.querySelector('.sched-hdr.active');
+  if(cur) cur.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Phase finale (KO)
+function renderFinaleDual(st){
+  const el=document.getElementById('tab-finale');if(!el) return;
+  const koDone=bothPoolsDoneM(st);
+  let html='',any=false;
+  st.cats.forEach((cat,ci)=>{
+    if(!cat.poolList?.length) return;
+    any=true;const col=_CM[ci];
+    html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">⚡ ${esc(cat.name)}</div>`;
+    if(!koDone){html+=`<div class="waiting" style="padding:12px 0;height:auto;font-size:11px">Poules en cours...</div>`;return;}
+    const bracket=buildBracketCat(cat);
+    if(!bracket){html+=`<div class="waiting" style="padding:12px 0;height:auto;font-size:11px">En attente...</div>`;return;}
+    const finalM=bracket.finals.find(f=>f.id==='final');
+    if(finalM&&cat.km?.['final']?.played){
+      const champ=getWC(cat,'final',finalM.t1,finalM.t2);
+      if(champ&&champ!=='?'){
+        html+=`<div class="champion" style="margin-bottom:10px"><span class="trophy">🏆</span><div class="title">Champion — ${esc(cat.name)}</div><div class="name">${esc(champ)}</div><div class="congrats">🎉 Félicitations !</div></div>`;
+      }
+    }
+    const qfDone=bracket.qf.every(m=>cat.km?.[m.id]?.played);
+    const sfAll=[...bracket.sf,...bracket.sfl],sfDone=sfAll.every(m=>cat.km?.[m.id]?.played);
+    const finDone=bracket.finals.every(m=>cat.km?.[m.id]?.played);
+    html+=koRoundM(cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
+    html+=koRoundM(cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
+    html+=koRoundM(cat,'🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,col);
+  });
+  el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';
+}
+
+// ── Helpers communs
+function getStandCat(cat,pi){
+  const s={};
+  (cat.poolList[pi]||[]).forEach(n=>s[n]={name:n,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,tiedWith:[]});
+  (cat.poolMatches[pi]||[]).forEach(m=>{
+    if(!m.played) return;
+    const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;
+    s[m.home].P++;s[m.away].P++;s[m.home].GF+=h;s[m.home].GA+=a;s[m.home].GD+=h-a;s[m.away].GF+=a;s[m.away].GA+=h;s[m.away].GD+=a-h;
+    if(h>a){s[m.home].W++;s[m.home].Pts+=3;s[m.away].L++;}else if(a>h){s[m.away].W++;s[m.away].Pts+=3;s[m.home].L++;}else{s[m.home].D++;s[m.home].Pts++;s[m.away].D++;s[m.away].Pts++;}
+  });
+  return Object.values(s).sort((a,b)=>b.Pts-a.Pts||b.GF-a.GF||a.GA-b.GA);
+}
+function getWC(cat,id,t1,t2){const m=cat.km?.[id];if(!m||m.played!==true) return'?';const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;if(h>a) return t1;if(a>h) return t2;if(m.hp!==''&&m.hp!==undefined&&m.ap!==''&&m.ap!==undefined){const hp=parseInt(m.hp),ap=parseInt(m.ap);if(hp!==ap) return hp>ap?t1:t2;}return'?';}
+function getLC(cat,id,t1,t2){const w=getWC(cat,id,t1,t2);return w==='?'?'?':w===t1?t2:t1;}
+function buildBracketCat(cat){
+  if(!cat.poolList?.length||!cat.poolMatches?.length) return null;
+  const st=cat.poolList.map((_,pi)=>getStandCat(cat,pi));if(!st[0]?.length) return null;
+  const ps=st[0].length,pd=cat.poolMatches.every(pms=>pms.every(m=>m.played));
+  const a=pd?st[0]:[],b=pd?(st[1]||st[0]):[];
+  const qf=[];
+  for(let r=0;r<Math.floor(ps/2);r++){
+    const rA=r+1,rB=ps-r;
+    qf.push({id:`qf${r*2}`,  label:`${rA}A vs ${rB}B`,t1:a[r]?.name||'?',        t2:b[ps-1-r]?.name||'?'});
+    qf.push({id:`qf${r*2+1}`,label:`${rA}B vs ${rB}A`,t1:b[r]?.name||'?',        t2:a[ps-1-r]?.name||'?'});
+  }
+  const n=qf.length,sf=[],sfl=[];
+  for(let i=0;i<n/2;i++){const qa=qf[i],qb=qf[n-1-i];sf.push({id:`sfW${i}`,label:`Demi ${i+1}`,t1:getWC(cat,qa.id,qa.t1,qa.t2),t2:getWC(cat,qb.id,qb.t1,qb.t2)});sfl.push({id:`sfL${i}`,label:`Demi consol. ${i+1}`,t1:getLC(cat,qa.id,qa.t1,qa.t2),t2:getLC(cat,qb.id,qb.t1,qb.t2)});}
+  const sw0=sf[0]||{id:'sfW0',t1:'?',t2:'?'},sw1=sf[1]||{id:'sfW1',t1:'?',t2:'?'},sl0=sfl[0]||{id:'sfL0',t1:'?',t2:'?'},sl1=sfl[1]||{id:'sfL1',t1:'?',t2:'?'};
+  const finals=[{id:'final',label:'🏆 Finale',t1:getWC(cat,sw0.id,sw0.t1,sw0.t2),t2:getWC(cat,sw1.id,sw1.t1,sw1.t2)},{id:'third',label:'🥉 3e place',t1:getLC(cat,sw0.id,sw0.t1,sw0.t2),t2:getLC(cat,sw1.id,sw1.t1,sw1.t2)},{id:'consolef',label:'🏅 Finale consolante',t1:getWC(cat,sl0.id,sl0.t1,sl0.t2),t2:getWC(cat,sl1.id,sl1.t1,sl1.t2)},{id:'consolet',label:'🏅 3e consolante',t1:getLC(cat,sl0.id,sl0.t1,sl0.t2),t2:getLC(cat,sl1.id,sl1.t1,sl1.t2)}];
+  return{qf,sf,sfl,finals};
+}
+function koRoundM(cat,title,matches,done,active,col){
+  const hdrCls=done?'ko-round-hdr done':active?'ko-round-hdr active':'ko-round-hdr';
+  let html=`<div class="ko-round"><div class="${hdrCls}" style="${active?'':'border-left:3px solid '+col}">${done?'✓ ':active?'▶ ':''}${title}</div>`;
+  matches.forEach(m=>{const km=cat.km?.[m.id];const played=km?.played===true;const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;let sc=played?`${h} : ${a}`:'? : ?';if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';html+=`<div class="ko-match-row"><span class="ko-lvl">${m.label}</span><span class="ko-team right" style="${w===t1?'color:var(--green)':''}">${esc(t1)}</span><span class="ko-score${played?' done':active?' live':''}">${sc}</span><span class="ko-team" style="${w===t2?'color:var(--green)':''}">${esc(t2)}</span></div>`;});
+  html+='</div>';return html;
+}
+
 </script>
 </body>
 </html>
