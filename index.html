@@ -101,6 +101,10 @@
   </div>
 </div>
 
+<div id="cat-filter" class="cat-filter" style="display:none">
+  <button id="cat-btn-0" class="cat-btn cat0 active" onclick="setCatFilter(0)">--</button>
+  <button id="cat-btn-1" class="cat-btn cat1" onclick="setCatFilter(1)">--</button>
+</div>
 <div class="tabs">
   <button class="tab active" onclick="showTab('classements',this)">📊 Classements</button>
   <button class="tab" onclick="showTab('resultats',this)">📋 Résultats</button>
@@ -130,6 +134,23 @@ const TABLE='"Tournoi-USC"';
 let state=null;
 let _pollTimer=null;
 let _lastUpdatedAt=null;
+let activeCat=0; // catégorie active (0 ou 1)
+
+function setCatFilter(ci){
+  activeCat=ci;
+  document.querySelectorAll('.cat-btn').forEach((btn,i)=>btn.classList.toggle('active',i===ci));
+  if(state&&state.cats) renderDualCatMobile(state);
+}
+function updateCatButtons(cats){
+  const f=document.getElementById('cat-filter');
+  if(f&&cats?.length>=2){
+    f.style.display='';
+    const b0=document.getElementById('cat-btn-0');
+    const b1=document.getElementById('cat-btn-1');
+    if(b0) b0.textContent=cats[0].name||'Cat A';
+    if(b1) b1.textContent=cats[1].name||'Cat B';
+  }
+}
 
 // ── SUPABASE REALTIME STREAMING
 async function initSupabase(){
@@ -426,18 +447,17 @@ function bothPoolsDoneM(st){return st.cats.every(cat=>cat.poolMatches?.every(pms
 
 function renderDualCatMobile(st){
   if(st.theme) document.documentElement.setAttribute('data-theme',st.theme);
-  const names=st.cats.map(c=>c.name||'Cat').join(' / ');
-  const sub=document.getElementById('hdr-sub');if(sub) sub.textContent=names;
+  const sub=document.getElementById('hdr-sub');
+  if(sub) sub.textContent=st.cats[activeCat]?.name||'--';
+  updateCatButtons(st.cats);
 
   const koDone=bothPoolsDoneM(st);
   if(koDone){
-    // Auto-switch to Phase finale tab
-    const tabs=document.querySelectorAll('.tab-btn');
-    tabs.forEach(t=>{
-      if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes('finale')){
-        if(!t.classList.contains('active')) t.click();
-      }
-    });
+    // Auto-switch to Phase finale tab si pas déjà dessus
+    const tabBtns=document.querySelectorAll('.tabs .tab');
+    let finaleActive=false;
+    tabBtns.forEach(t=>{if(t.getAttribute('onclick')?.includes('finale')&&t.classList.contains('active')) finaleActive=true;});
+    if(!finaleActive){const ft=document.querySelector('.tabs .tab:last-child');if(ft) ft.click();}
     renderFinaleDual(st);
     renderClassementsComplet(st);
   } else {
@@ -451,8 +471,11 @@ function renderDualCatMobile(st){
 function renderClassementsDual(st){
   const el=document.getElementById('tab-classements');if(!el) return;
   let html='',any=false;
-  st.cats.forEach((cat,ci)=>{
-    if(!cat.poolList?.length||!cat.started) return;
+  // Afficher uniquement la catégorie active
+  const ciArr=[activeCat];
+  ciArr.forEach(ci=>{
+    const cat=st.cats[ci];
+    if(!cat?.poolList?.length||!cat.started) return;
     any=true;const col=_CM[ci];
     html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">${esc(cat.name)}</div>`;
     cat.poolList.forEach((pool,pi)=>{
@@ -485,8 +508,9 @@ function renderClassementsDual(st){
 function renderClassementsComplet(st){
   const el=document.getElementById('tab-classements');if(!el) return;
   let html='';
-  st.cats.forEach((cat,ci)=>{
-    if(!cat.poolList?.length) return;
+  [activeCat].forEach(ci=>{
+    const cat=st.cats[ci];
+    if(!cat?.poolList?.length) return;
     const col=_CM[ci];
     html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">✓ ${esc(cat.name)} — Poules terminées</div>`;
     cat.poolList.forEach((pool,pi)=>{
@@ -517,6 +541,7 @@ function renderResultatsDual(st){
       return;
     }
     if(c.isKO) return; // pendant phase poule, pas de KO
+    if(c.ci!==activeCat) return; // seulement la catégorie active
     ci2++;
     const isCurrent=idx===st.currentCreneau,isDone=c.done;
     const cat=st.cats?.[c.ci];const catCol=_CM[c.ci]||'#fff';
@@ -553,8 +578,9 @@ function renderFinaleDual(st){
   const el=document.getElementById('tab-finale');if(!el) return;
   const koDone=bothPoolsDoneM(st);
   let html='',any=false;
-  st.cats.forEach((cat,ci)=>{
-    if(!cat.poolList?.length) return;
+  [activeCat].forEach(ci=>{
+    const cat=st.cats[ci];
+    if(!cat?.poolList?.length) return;
     any=true;const col=_CM[ci];
     html+=`<div style="font-size:13px;font-weight:800;color:${col};padding:7px 12px;background:rgba(${ci===0?'46,204,113':'230,126,34'},.12);border-radius:8px;margin-bottom:8px">⚡ ${esc(cat.name)}</div>`;
     if(!koDone){html+=`<div class="waiting" style="padding:12px 0;height:auto;font-size:11px">Poules en cours...</div>`;return;}
