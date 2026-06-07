@@ -372,8 +372,8 @@ function renderResultats(){
       const score=`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`;
       const scoreCls=isCur&&!isDone?'sr-score live':'sr-score';
       html+=`<div class="sched-row">
-        <div class="sr-bar" style="background:${tc}"></div>
-        <div class="sr-info"><div class="sr-t">T${(ref.terrain||0)+1}</div><span class="sr-badge sr-pool">Poule ${PL[ref.pi]||''}</span></div>
+        <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
+        <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
         <div class="sr-teams">
           <span class="sr-team right">${m.home}</span>
           <span class="${scoreCls}">${score}</span>
@@ -557,8 +557,8 @@ function renderResultatsDual(st){
       const hs=parseInt(m?.hs)||0,as=parseInt(m?.as)||0,played=m?.played;
       const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
       html+=`<div class="sched-row">
-        <div class="sr-bar" style="background:${tc}"></div>
-        <div class="sr-info"><div class="sr-t">T${(ref.terrain||0)+1}</div><span class="sr-badge sr-pool">Poule ${PL[ref.pi]||''}</span></div>
+        <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
+        <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
         <div class="sr-teams">
           <span class="sr-team right">${esc(home)}</span>
           <span class="${scoreCls}">${played?hs+' : '+as:'? : ?'}</span>
@@ -596,9 +596,9 @@ function renderFinaleDual(st){
     const qfDone=bracket.qf.every(m=>cat.km?.[m.id]?.played);
     const sfAll=[...bracket.sf,...bracket.sfl],sfDone=sfAll.every(m=>cat.km?.[m.id]?.played);
     const finDone=bracket.finals.every(m=>cat.km?.[m.id]?.played);
-    html+=koRoundM(cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
-    html+=koRoundM(cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
-    html+=koRoundM(cat,'🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,col);
+    html+=koRoundM(ci,cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
+    html+=koRoundM(ci,cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
+    html+=koRoundM(ci,cat,'🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,col);
   });
   el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';
 }
@@ -613,7 +613,26 @@ function getStandCat(cat,pi){
     s[m.home].P++;s[m.away].P++;s[m.home].GF+=h;s[m.home].GA+=a;s[m.home].GD+=h-a;s[m.away].GF+=a;s[m.away].GA+=h;s[m.away].GD+=a-h;
     if(h>a){s[m.home].W++;s[m.home].Pts+=3;s[m.away].L++;}else if(a>h){s[m.away].W++;s[m.away].Pts+=3;s[m.home].L++;}else{s[m.home].D++;s[m.home].Pts++;s[m.away].D++;s[m.away].Pts++;}
   });
-  return Object.values(s).sort((a,b)=>b.Pts-a.Pts||b.GF-a.GF||a.GA-b.GA);
+  const rows=Object.values(s);
+  function h2h(an,bn){
+    let ap=0,bp=0;
+    (cat.poolMatches[pi]||[]).forEach(m=>{
+      if(!m.played) return;
+      if(m.home===an&&m.away===bn){const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;if(h>a)ap+=3;else if(a>h)bp+=3;else{ap++;bp++;}}
+      else if(m.home===bn&&m.away===an){const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;if(h>a)bp+=3;else if(a>h)ap+=3;else{ap++;bp++;}}
+    });
+    return{a:ap,b:bp};
+  }
+  rows.sort((a,b)=>{
+    if(b.Pts!==a.Pts) return b.Pts-a.Pts;
+    const hh=h2h(a.name,b.name);if(hh.b!==hh.a) return hh.b-hh.a;
+    if(b.GF!==a.GF) return b.GF-a.GF;if(a.GA!==b.GA) return a.GA-b.GA;
+    const key=`${pi}|${[a.name,b.name].sort().join('|')}`;
+    const pp=(cat.poolPenos||{})[key];
+    if(pp){const ap2=parseInt(pp[a.name])||0,bp2=parseInt(pp[b.name])||0;if(bp2!==ap2) return bp2-ap2;}
+    return 0;
+  });
+  return rows;
 }
 function getWC(cat,id,t1,t2){const m=cat.km?.[id];if(!m||m.played!==true) return'?';const h=parseInt(m.hs)||0,a=parseInt(m.as)||0;if(h>a) return t1;if(a>h) return t2;if(m.hp!==''&&m.hp!==undefined&&m.ap!==''&&m.ap!==undefined){const hp=parseInt(m.hp),ap=parseInt(m.ap);if(hp!==ap) return hp>ap?t1:t2;}return'?';}
 function getLC(cat,id,t1,t2){const w=getWC(cat,id,t1,t2);return w==='?'?'?':w===t1?t2:t1;}
@@ -634,10 +653,42 @@ function buildBracketCat(cat){
   const finals=[{id:'final',label:'🏆 Finale',t1:getWC(cat,sw0.id,sw0.t1,sw0.t2),t2:getWC(cat,sw1.id,sw1.t1,sw1.t2)},{id:'third',label:'🥉 3e place',t1:getLC(cat,sw0.id,sw0.t1,sw0.t2),t2:getLC(cat,sw1.id,sw1.t1,sw1.t2)},{id:'consolef',label:'🏅 Finale consolante',t1:getWC(cat,sl0.id,sl0.t1,sl0.t2),t2:getWC(cat,sl1.id,sl1.t1,sl1.t2)},{id:'consolet',label:'🏅 3e consolante',t1:getLC(cat,sl0.id,sl0.t1,sl0.t2),t2:getLC(cat,sl1.id,sl1.t1,sl1.t2)}];
   return{qf,sf,sfl,finals};
 }
-function koRoundM(cat,title,matches,done,active,col){
+const _CM_TC=['#e74c3c','#3498db','#f39c12','#9b59b6','#1abc9c','#e67e22','#2ecc71','#e91e63'];
+function getKOTerrainM(ci,koId){
+  if(!state?.globalKOCreneaux) return null;
+  for(const cren of state.globalKOCreneaux){
+    if(cren.ci!==ci) continue;
+    const m=cren.matches?.find(m=>m.koId===koId);
+    if(m!=null) return m.terrain??null;
+  }
+  return null;
+}
+
+function getKOCreneauTimeM(ci,matches){
+  if(!state?.globalKOCreneaux||!matches?.length) return null;
+  const firstId=matches[0]?.id;
+  for(const cren of state.globalKOCreneaux){
+    if(cren.ci!==ci) continue;
+    if(cren.matches?.some(m=>m.koId===firstId)) return cren.startTime||null;
+  }
+  return null;
+}
+
+function koRoundM(ci,cat,title,matches,done,active,col){
   const hdrCls=done?'ko-round-hdr done':active?'ko-round-hdr active':'ko-round-hdr';
-  let html=`<div class="ko-round"><div class="${hdrCls}" style="${active?'':'border-left:3px solid '+col}">${done?'✓ ':active?'▶ ':''}${title}</div>`;
-  matches.forEach(m=>{const km=cat.km?.[m.id];const played=km?.played===true;const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;let sc=played?`${h} : ${a}`:'? : ?';if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';html+=`<div class="ko-match-row"><span class="ko-lvl">${m.label}</span><span class="ko-team right" style="${w===t1?'color:var(--green)':''}">${esc(t1)}</span><span class="ko-score${played?' done':active?' live':''}">${sc}</span><span class="ko-team" style="${w===t2?'color:var(--green)':''}">${esc(t2)}</span></div>`;});
+  const _t=getKOCreneauTimeM(ci,matches);
+  const _tStr=_t?` <span style="font-size:9px;opacity:.75;font-weight:400"> · ${_t}</span>`:'';
+  let html=`<div class="ko-round"><div class="${hdrCls}" style="${active?'':'border-left:3px solid '+col}">${done?'✓ ':active?'▶ ':''}${title}${_tStr}</div>`;
+  matches.forEach(m=>{
+    const km=cat.km?.[m.id];const played=km?.played===true;
+    const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;
+    let sc=played?`${h} : ${a}`:'? : ?';
+    if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;
+    const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';
+    const terrain=getKOTerrainM(ci,m.id);const tc=terrain!==null?_CM_TC[terrain%_CM_TC.length]:null;
+    const tBadge=tc?`<span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">T${terrain+1}</span>`:'';
+    html+=`<div class="ko-match-row">${tBadge}<span class="ko-lvl">${m.label}</span><span class="ko-team right" style="${w===t1?'color:var(--green)':''}">${esc(t1)}</span><span class="ko-score${played?' done':active?' live':''}">${sc}</span><span class="ko-team" style="${w===t2?'color:var(--green)':''}">${esc(t2)}</span></div>`;
+  });
   html+='</div>';return html;
 }
 
