@@ -427,7 +427,8 @@ function renderFinale(){
   const mainMatches  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
   const consolDone=consolMatches.every(m=>state.km?.[m.id]?.played);
   const mainDone  =mainMatches.every(m=>state.km?.[m.id]?.played);
-  html+=koRound('🏅 Consolante',consolMatches,consolDone,sfDone&&!consolDone,finTime);
+  const consolTime=koc.length>=2?koc[koc.length-2]?.startTime||'':'';  // avant-dernier créneau
+  html+=koRound('🏅 Consolante',consolMatches,consolDone,sfDone&&!consolDone,consolTime);
   html+=koRound('🏆 Finale',    mainMatches,  mainDone,  sfDone&&consolDone&&!mainDone,finTime);
 
   el.innerHTML=html;
@@ -436,17 +437,20 @@ function renderFinale(){
 function koRound(title,matches,done,active,time){
   const cls=done?'ko-round-hdr done':active?'ko-round-hdr active':'ko-round-hdr';
   const timeTag=time?` <span style="font-weight:400;opacity:.75;font-size:9px">· ${time}</span>`:'';
-  let html=`<div class="ko-round"><div class="${cls}">${done?'✓ ':active?'▶ ':''}${title}${timeTag}</div>`;
+  let html=`<div class="ko-round"><div class="${cls}">${done?'✓ ':active?'▶ ':''} ${title}${timeTag}</div>`;
   matches.forEach(m=>{
-    const mDone=state.km?.[m.id]?.played===true;
+    const km=state.km?.[m.id];
+    const mDone=km?.played===true;
+    const hs=parseInt(km?.hs)||0,as2=parseInt(km?.as)||0;
+    const inProgress=!mDone&&km&&(hs>0||as2>0);
     const w=mDone?getW(m.id,m.t1,m.t2):'';
-    const hs=mDone?parseInt(state.km[m.id].hs)||0:'?';
-    const as=mDone?parseInt(state.km[m.id].as)||0:'?';
-    const score=mDone?`${hs} : ${as}`:'? : ?';
+    const score=mDone?`${hs} : ${as2}`:inProgress?`${hs} : ${as2}`:'? : ?';
+    const encoursBadge=inProgress?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 5px;border-radius:3px">En cours</span>`:'';
     html+=`<div class="ko-match-row">
       <span class="ko-lvl">${m.label}</span>
+      ${encoursBadge}
       <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${esc(m.t1)||'?'}</span>
-      <span class="ko-score${mDone?' done':''}">${score}</span>
+      <span class="ko-score${mDone?' done':inProgress?' live':''}">${score}</span>
       <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${esc(m.t2)||'?'}</span>
     </div>`;
   });
@@ -629,12 +633,12 @@ function renderFinaleDual(st){
     html+=koRoundM(ci,cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
     html+=koRoundM(ci,cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
     // Finals — 2 blocs séparés
-    const consolMatches=bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet');
-    const mainMatches  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
-    const consolDone=consolMatches.every(m=>cat.km?.[m.id]?.played);
-    const mainDone  =mainMatches.every(m=>cat.km?.[m.id]?.played);
-    html+=koRoundM(ci,cat,'🏅 Consolante',consolMatches,consolDone,sfDone&&!consolDone,col);
-    html+=koRoundM(ci,cat,'🏆 Finale',    mainMatches,  mainDone,  sfDone&&consolDone&&!mainDone,col);
+    const consolMatchesM=bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet');
+    const mainMatchesM  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
+    const consolDoneM=consolMatchesM.every(m=>cat.km?.[m.id]?.played);
+    const mainDoneM  =mainMatchesM.every(m=>cat.km?.[m.id]?.played);
+    html+=koRoundM(ci,cat,'🏅 Consolante',consolMatchesM,consolDoneM,sfDone&&!consolDoneM,col);
+    html+=koRoundM(ci,cat,'🏆 Finale',    mainMatchesM,  mainDoneM,  sfDone&&consolDoneM&&!mainDoneM,col);
   });
   el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';
 }
@@ -693,8 +697,8 @@ const _CM_TC=['#e74c3c','#3498db','#f39c12','#9b59b6','#1abc9c','#e67e22','#2ecc
 function getKOTerrainM(ci,koId){
   if(!state?.globalKOCreneaux) return null;
   for(const cren of state.globalKOCreneaux){
-    if(cren.ci!==ci) continue;
-    const m=cren.matches?.find(m=>m.koId===koId);
+    if(cren.ci!==ci&&cren.ci!==-1) continue;
+    const m=cren.matches?.find(m=>m.koId===koId&&(m.ci===ci||cren.ci===-1));
     if(m!=null) return m.terrain??null;
   }
   return null;
@@ -704,7 +708,7 @@ function getKOCreneauTimeM(ci,matches){
   if(!state?.globalKOCreneaux||!matches?.length) return null;
   const firstId=matches[0]?.id;
   for(const cren of state.globalKOCreneaux){
-    if(cren.ci!==ci) continue;
+    if(cren.ci!==ci&&cren.ci!==-1) continue;
     if(cren.matches?.some(m=>m.koId===firstId)) return cren.startTime||null;
   }
   return null;
@@ -714,16 +718,18 @@ function koRoundM(ci,cat,title,matches,done,active,col){
   const hdrCls=done?'ko-round-hdr done':active?'ko-round-hdr active':'ko-round-hdr';
   const _t=getKOCreneauTimeM(ci,matches);
   const _tStr=_t?` <span style="font-size:9px;opacity:.75;font-weight:400"> · ${_t}</span>`:'';
-  let html=`<div class="ko-round"><div class="${hdrCls}" style="${active?'':'border-left:3px solid '+col}">${done?'✓ ':active?'▶ ':''}${title}${_tStr}</div>`;
+  let html=`<div class="ko-round"><div class="${hdrCls}" style="${active?'':`border-left:3px solid ${col}`}">${done?'✓ ':active?'▶ ':''} ${title}${_tStr}</div>`;
   matches.forEach(m=>{
     const km=cat.km?.[m.id];const played=km?.played===true;
     const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;
-    let sc=played?`${h} : ${a}`:'? : ?';
+    const inProgress=!played&&km&&(h>0||a>0);
+    let sc=played?`${h} : ${a}`:inProgress?`${h} : ${a}`:'? : ?';
     if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;
     const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';
     const terrain=getKOTerrainM(ci,m.id);const tc=terrain!==null?_CM_TC[terrain%_CM_TC.length]:null;
     const tBadge=tc?`<span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">T${terrain+1}</span>`:'';
-    html+=`<div class="ko-match-row">${tBadge}<span class="ko-lvl">${m.label}</span><span class="ko-team right" style="${w===t1?'color:var(--green)':''}">${esc(t1)}</span><span class="ko-score${played?' done':active?' live':''}">${sc}</span><span class="ko-team" style="${w===t2?'color:var(--green)':''}">${esc(t2)}</span></div>`;
+    const encoursBadge=inProgress?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 5px;border-radius:3px">En cours</span>`:'';
+    html+=`<div class="ko-match-row">${tBadge}${encoursBadge}<span class="ko-lvl">${m.label}</span><span class="ko-team right" style="${w===t1?'color:var(--green)':''}">${esc(t1)}</span><span class="ko-score${played?' done':inProgress?' live':active?' live':''}">${sc}</span><span class="ko-team" style="${w===t2?'color:var(--green)':''}">${esc(t2)}</span></div>`;
   });
   html+='</div>';return html;
 }
