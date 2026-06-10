@@ -381,18 +381,14 @@ function renderResultats(){
     c.matches.forEach(ref=>{
       const m=state.poolMatches?.[ref.pi]?.[ref.mi];if(!m) return;
       const tc=TC[(ref.terrain||0)%TC.length];
-      const hs=parseInt(m.hs)||0,as=parseInt(m.as)||0;
-      const matchStarted=!!(m.started);
-      const scoreCls=matchStarted?'sr-score live':m.played?'sr-score':isCur&&!isDone?'sr-score live':'sr-score';
-      const scoreStr=m.played?hs+' : '+as:matchStarted?hs+' : '+as:'? : ?';
-      const encoursBadge=matchStarted&&!m.played?'<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>':''; 
+      const score=`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`;
+      const scoreCls=isCur&&!isDone?'sr-score live':'sr-score';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
-        ${encoursBadge}
         <div class="sr-teams">
           <span class="sr-team right">${m.home}</span>
-          <span class="${scoreCls}">${scoreStr}</span>
+          <span class="${scoreCls}">${score}</span>
           <span class="sr-team">${m.away}</span>
         </div>
       </div>`;
@@ -446,14 +442,13 @@ function koRound(title,matches,done,active,time){
     const km=state.km?.[m.id];
     const mDone=km?.played===true;
     const hs=parseInt(km?.hs)||0,as2=parseInt(km?.as)||0;
-    const inProgress=!mDone&&km?.started===true;
+    const inProgress=!mDone&&km&&(hs>0||as2>0);
     const w=mDone?getW(m.id,m.t1,m.t2):'';
     const score=mDone?`${hs} : ${as2}`:inProgress?`${hs} : ${as2}`:'? : ?';
-    const terrain=getKOTerrainM(0,m.id);const tc=terrain!==null?TC[terrain%TC.length]:null;
-    const tBadge=tc?`<span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">T${terrain+1}</span>`:'';
     const encoursBadge=inProgress?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 5px;border-radius:3px">En cours</span>`:'';
     html+=`<div class="ko-match-row">
-      ${tBadge}<span class="ko-lvl">${m.label}</span>${encoursBadge}
+      <span class="ko-lvl">${m.label}</span>
+      ${encoursBadge}
       <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${esc(m.t1)||'?'}</span>
       <span class="ko-score${mDone?' done':inProgress?' live':''}">${score}</span>
       <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${esc(m.t2)||'?'}</span>
@@ -593,21 +588,15 @@ function renderResultatsDual(st){
         const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
         if(m){home=m.home;away=m.away;hs=parseInt(m.hs)||0;as2=parseInt(m.as)||0;played=m.played;}
       }
-      let matchStarted2=false;
-      if(isKO){matchStarted2=!!(cat?.km?.[ref.koId]?.started);}
-      else{matchStarted2=!!(cat?.poolMatches?.[ref.pi]?.[ref.mi]?.started);}
-      const scoreCls=matchStarted2?'sr-score live':played?'sr-score':isCurrent&&!isDone?'sr-score live':'sr-score';
+      const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
       const lvlLabel=isKO?(ref.compLevel||ref.label||'KO'):(`Poule ${PL[ref.pi]||''}`);
       const lvlCls=isKO?'sr-ko':'sr-pool';
-      const encoursBadge2=matchStarted2&&!played?'<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>':''; 
-      const scoreStr2=played?hs+' : '+as2:matchStarted2?hs+' : '+as2:'? : ?';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge ${lvlCls}" style="flex-shrink:0">${lvlLabel}</span>
-        ${encoursBadge2}
         <div class="sr-teams">
           <span class="sr-team right">${esc(home)}</span>
-          <span class="${scoreCls}">${scoreStr2}</span>
+          <span class="${scoreCls}">${played?hs+' : '+as2:'? : ?'}</span>
           <span class="sr-team">${esc(away)}</span>
         </div>
       </div>`;
@@ -733,7 +722,7 @@ function koRoundM(ci,cat,title,matches,done,active,col){
   matches.forEach(m=>{
     const km=cat.km?.[m.id];const played=km?.played===true;
     const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;
-    const inProgress=!played&&km?.started===true;
+    const inProgress=!played&&km&&(h>0||a>0);
     let sc=played?`${h} : ${a}`:inProgress?`${h} : ${a}`:'? : ?';
     if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;
     const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';
