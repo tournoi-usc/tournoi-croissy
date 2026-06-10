@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live</title>
+  <title>Tournoi Nini — Live v7.0.0</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -307,7 +307,19 @@ function getKOBracket(){
 
 // ── RENDER
 function render(){
-  if(state&&state.cats&&state.cats.length>=1){renderDualCatMobile(state);return;}
+  if(state&&state.cats&&state.cats.length>=1){
+    // Respect smartphoneEnabled flag
+    if(state.smartphoneEnabled===false){
+      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;color:var(--text3);background:var(--bg)"><span style="font-size:48px">📵</span><span style="font-size:16px;font-weight:700">Affichage smartphone désactivé</span></div>';
+      return;
+    }
+    // Update LIVE dot
+    const ac=[...(state.globalCreneaux||[]),...(state.globalKOCreneaux||[])];
+    const cc=ac[state.currentCreneau];
+    const liveDot=document.querySelector('.live-dot');
+    if(liveDot) liveDot.style.background=cc&&cc.type==='match'&&!cc.done?'#ff4444':'#888';
+    renderDualCatMobile(state);return;
+  }
   if(!state||!state.poolList?.length) return;
   document.getElementById('hdr-sub').textContent=`${state.N} équipes · ${state.poolList.length} poule(s)`;
   renderClassements();
@@ -408,11 +420,15 @@ function renderFinale(){
   const qfDone=bracket.qf.every(m=>state.km?.[m.id]?.played);
   const sfAll=[...bracket.sf,...bracket.sfl];
   const sfDone=sfAll.every(m=>state.km?.[m.id]?.played);
-  const finDone=bracket.finals.every(m=>state.km?.[m.id]?.played);
-
   html+=koRound('⚡ Quarts de finale',bracket.qf,qfDone,poolsDone&&!qfDone,qfTime);
   html+=koRound('⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,sfTime);
-  html+=koRound('🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,finTime);
+  // Finals — 2 blocs séparés
+  const consolMatches=bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet');
+  const mainMatches  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
+  const consolDone=consolMatches.every(m=>state.km?.[m.id]?.played);
+  const mainDone  =mainMatches.every(m=>state.km?.[m.id]?.played);
+  html+=koRound('🏅 Consolante',consolMatches,consolDone,sfDone&&!consolDone,finTime);
+  html+=koRound('🏆 Finale',    mainMatches,  mainDone,  sfDone&&consolDone&&!mainDone,finTime);
 
   el.innerHTML=html;
 }
@@ -460,7 +476,6 @@ function renderDualCatMobile(st){
     if(!finaleActive){const ft=document.querySelector('.tabs .tab:last-child');if(ft) ft.click();}
     renderFinaleDual(st);
     renderClassementsComplet(st);
-    renderResultatsDual(st);
   } else {
     renderClassementsDual(st);
     renderResultatsDual(st);
@@ -529,7 +544,7 @@ function renderClassementsComplet(st){
   el.innerHTML=html||'<div class="waiting"><span class="ico">📊</span>Poules en cours...</div>';
 }
 
-// ── Résultats (phase poule)
+// ── Résultats (toutes phases)
 function renderResultatsDual(st){
   const el=document.getElementById('tab-resultats');if(!el) return;
   const allC=[...(st.globalCreneaux||[]),...(st.globalKOCreneaux||[])];
@@ -541,29 +556,43 @@ function renderResultatsDual(st){
       html+=`<div class="pause-row">🍽 Déjeuner — ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} (${c.dur} min)</div>`;
       return;
     }
-    if(c.isKO) return; // pendant phase poule, pas de KO
-    if(c.ci!==activeCat) return; // seulement la catégorie active
+    // Filtrer par catégorie active (mixte inclus si la cat active y est présente)
+    if(c.isMixed){
+      if(!c.matches?.some(m=>m.ci===activeCat)) return;
+    } else {
+      if(c.ci!==activeCat) return;
+    }
     ci2++;
     const isCurrent=idx===st.currentCreneau,isDone=c.done;
-    const cat=st.cats?.[c.ci];const catCol=_CM[c.ci]||'#fff';
+    const cat=st.cats?.[activeCat];const catCol=_CM[activeCat]||'#fff';
     const hdrCls=isDone?'sched-hdr done':isCurrent?'sched-hdr active':'sched-hdr';
-    const liveTagM=isCurrent&&!isDone?'<span style="color:#e74c3c;font-size:8px;font-weight:900;margin-left:5px;animation:livepulse 1s infinite">● EN COURS</span>':'';
+    const liveTag=isCurrent&&!isDone?'<span style="font-size:8px;font-weight:800;color:#ff4444;margin-left:5px">● LIVE</span>':'';
+    const matchesForCi=c.isMixed?c.matches.filter(m=>m.ci===activeCat):c.matches;
     html+=`<div class="sched-slot"><div class="${hdrCls}">
-      ${isDone?'✓':isCurrent?'▶':ci2+'.'} C${ci2} ${c.startTime?'· '+c.startTime:''}
+      ${isDone?'✓':isCurrent?'▶':ci2+'.'} C${ci2} ${c.startTime?'· '+c.startTime:''}${liveTag}
       <span style="background:${catCol};color:#fff;font-size:8px;font-weight:800;padding:1px 6px;border-radius:3px;margin-left:5px">${esc(cat?.name||'?')}</span>
     </div>`;
-    (c.matches||[]).forEach(ref=>{
+    (matchesForCi||[]).forEach(ref=>{
       const tc=TC[(ref.terrain||0)%TC.length];
-      const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
-      const home=m?.home||'?',away=m?.away||'?';
-      const hs=parseInt(m?.hs)||0,as=parseInt(m?.as)||0,played=m?.played;
+      const isKO=c.isKO;
+      let home='?',away='?',hs=0,as2=0,played=false;
+      if(isKO){
+        const km=cat?.km?.[ref.koId];
+        home=ref.t1||'?';away=ref.t2||'?';
+        if(km?.played){hs=parseInt(km.hs)||0;as2=parseInt(km.as)||0;played=true;}
+      } else {
+        const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
+        if(m){home=m.home;away=m.away;hs=parseInt(m.hs)||0;as2=parseInt(m.as)||0;played=m.played;}
+      }
       const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
+      const lvlLabel=isKO?(ref.compLevel||ref.label||'KO'):(`Poule ${PL[ref.pi]||''}`);
+      const lvlCls=isKO?'sr-ko':'sr-pool';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
-        <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
+        <span class="sr-badge ${lvlCls}" style="flex-shrink:0">${lvlLabel}</span>
         <div class="sr-teams">
           <span class="sr-team right">${esc(home)}</span>
-          <span class="${scoreCls}">${played?hs+' : '+as:'? : ?'}</span>
+          <span class="${scoreCls}">${played?hs+' : '+as2:'? : ?'}</span>
           <span class="sr-team">${esc(away)}</span>
         </div>
       </div>`;
@@ -597,10 +626,15 @@ function renderFinaleDual(st){
     }
     const qfDone=bracket.qf.every(m=>cat.km?.[m.id]?.played);
     const sfAll=[...bracket.sf,...bracket.sfl],sfDone=sfAll.every(m=>cat.km?.[m.id]?.played);
-    const finDone=bracket.finals.every(m=>cat.km?.[m.id]?.played);
     html+=koRoundM(ci,cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
     html+=koRoundM(ci,cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
-    html+=koRoundM(ci,cat,'🏆 Finales',bracket.finals,finDone,sfDone&&!finDone,col);
+    // Finals — 2 blocs séparés
+    const consolMatches=bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet');
+    const mainMatches  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
+    const consolDone=consolMatches.every(m=>cat.km?.[m.id]?.played);
+    const mainDone  =mainMatches.every(m=>cat.km?.[m.id]?.played);
+    html+=koRoundM(ci,cat,'🏅 Consolante',consolMatches,consolDone,sfDone&&!consolDone,col);
+    html+=koRoundM(ci,cat,'🏆 Finale',    mainMatches,  mainDone,  sfDone&&consolDone&&!mainDone,col);
   });
   el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';
 }
