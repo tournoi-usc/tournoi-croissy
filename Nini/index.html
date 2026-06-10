@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.0.0</title>
+  <title>Tournoi Nini — Live v7.0.3</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -14,75 +14,75 @@
     [data-theme="light"] .hdr{background:var(--green)}
     .hdr img{height:36px;width:36px;object-fit:contain;flex-shrink:0}
     .hdr-info{flex:1}
-    .hdr h1{font-size:16px;font-weight:800}
-    .hdr p{font-size:10px;opacity:.7;margin-top:1px}
+    .hdr h1{font-size:calc(var(--font-scale,1)*16px);font-weight:800}
+    .hdr p{font-size:calc(var(--font-scale,1)*10px);opacity:.7;margin-top:1px}
     .live-wrap{display:flex;align-items:center;gap:5px}
     .live-dot{width:8px;height:8px;background:#ff4444;border-radius:50%;animation:pulse 1.2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-    .live-txt{font-size:10px;opacity:.7;font-weight:600}
+    .live-txt{font-size:calc(var(--font-scale,1)*10px);opacity:.7;font-weight:600}
     /* Tabs */
     .tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99}
-    .tab{flex:1;padding:11px 6px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:.15s;text-align:center}
+    .tab{flex:1;padding:11px 6px;font-size:calc(var(--font-scale,1)*12px);font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:.15s;text-align:center}
     .tab.active{color:var(--green);border-bottom-color:var(--green)}
     /* Sections */
     .section{display:none;padding:12px}.section.active{display:block}
     /* Pool cards */
     .pool-card{background:var(--bg2);border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
     .pool-hdr{padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--bg3)}
-    .pool-letter{font-size:16px;font-weight:900;color:var(--gold)}
-    .pool-name{font-size:13px;font-weight:800}
-    .pool-terrain{font-size:10px;color:var(--text3);margin-left:auto}
+    .pool-letter{font-size:calc(var(--font-scale,1)*16px);font-weight:900;color:var(--gold)}
+    .pool-name{font-size:calc(var(--font-scale,1)*13px);font-weight:800}
+    .pool-terrain{font-size:calc(var(--font-scale,1)*10px);color:var(--text3);margin-left:auto}
     .team-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bg3)}
     .team-row:last-child{border-bottom:none}
-    .t-rank{font-size:12px;font-weight:700;color:var(--text3);width:16px;flex-shrink:0}
+    .t-rank{font-size:calc(var(--font-scale,1)*12px);font-weight:700;color:var(--text3);width:16px;flex-shrink:0}
     .t-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .t-name{flex:1;font-size:13px;font-weight:700}
-    .t-stats{font-size:10px;color:var(--text3);margin-right:6px}
-    .t-pts{font-size:16px;font-weight:900}
-    .t-ptslbl{font-size:8px;color:var(--text3)}
+    .t-name{flex:1;font-size:calc(var(--font-scale,1)*13px);font-weight:700}
+    .t-stats{font-size:calc(var(--font-scale,1)*10px);color:var(--text3);margin-right:6px}
+    .t-pts{font-size:calc(var(--font-scale,1)*16px);font-weight:900}
+    .t-ptslbl{font-size:calc(var(--font-scale,1)*8px);color:var(--text3)}
     /* Schedule */
     .sched-slot{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px}
-    .sched-hdr{padding:6px 10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:8px;background:var(--bg3);color:var(--text2)}
+    .sched-hdr{padding:6px 10px;font-size:calc(var(--font-scale,1)*11px);font-weight:700;display:flex;align-items:center;gap:8px;background:var(--bg3);color:var(--text2)}
     .sched-hdr.active{background:var(--gold);color:#1a1a1a}
     .sched-hdr.done{background:var(--green-l);color:var(--green)}
     .sched-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--bg3)}
     .sched-row:last-child{border-bottom:none}
     .sr-bar{width:3px;height:26px;border-radius:2px;flex-shrink:0}
     .sr-info{flex-shrink:0;min-width:52px}
-    .sr-t{font-size:9px;font-weight:700;color:var(--text3)}
-    .sr-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block;margin-top:1px}
+    .sr-t{font-size:calc(var(--font-scale,1)*9px);font-weight:700;color:var(--text3)}
+    .sr-badge{font-size:calc(var(--font-scale,1)*9px);font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block;margin-top:1px}
     .sr-pool{background:var(--blue-l);color:var(--blue)}
     .sr-ko{background:var(--gold-l);color:var(--gold)}
     .sr-teams{flex:1;display:flex;align-items:center;gap:5px}
-    .sr-team{flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sr-team{flex:1;font-size:calc(var(--font-scale,1)*12px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sr-team.right{text-align:right}
-    .sr-score{font-size:13px;font-weight:900;color:var(--text3);min-width:32px;text-align:center;flex-shrink:0}
+    .sr-score{font-size:calc(var(--font-scale,1)*13px);font-weight:900;color:var(--text3);min-width:32px;text-align:center;flex-shrink:0}
     .sr-score.live{color:var(--gold)}
-    .pause-row{background:var(--gold-l);border:1px solid var(--gold);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:8px}
+    .pause-row{background:var(--gold-l);border:1px solid var(--gold);border-radius:8px;padding:7px 12px;font-size:calc(var(--font-scale,1)*12px);font-weight:700;color:var(--gold);text-align:center;margin-bottom:8px}
     /* KO bracket */
     .ko-round{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px}
-    .ko-round-hdr{padding:6px 10px;font-size:11px;font-weight:700;background:var(--bg3);color:var(--text2)}
+    .ko-round-hdr{padding:6px 10px;font-size:calc(var(--font-scale,1)*11px);font-weight:700;background:var(--bg3);color:var(--text2)}
     .ko-round-hdr.active{background:var(--gold);color:#1a1a1a}
     .ko-round-hdr.done{background:var(--green-l);color:var(--green)}
     .ko-match-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--bg3)}
     .ko-match-row:last-child{border-bottom:none}
-    .ko-lvl{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--gold-l);color:var(--gold);flex-shrink:0;white-space:nowrap}
-    .ko-team{flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ko-lvl{font-size:calc(var(--font-scale,1)*8px);font-weight:700;padding:1px 5px;border-radius:3px;background:var(--gold-l);color:var(--gold);flex-shrink:0;white-space:nowrap}
+    .ko-team{flex:1;font-size:calc(var(--font-scale,1)*12px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .ko-team.right{text-align:right}
-    .ko-score{font-size:13px;font-weight:900;min-width:34px;text-align:center;flex-shrink:0;color:var(--text3)}
+    .ko-score{font-size:calc(var(--font-scale,1)*13px);font-weight:900;min-width:34px;text-align:center;flex-shrink:0;color:var(--text3)}
     .ko-score.done{color:var(--text)}
     /* Champion banner */
     .champion{background:linear-gradient(135deg,#1a2a0d,#2a3d00);border:2px solid var(--gold);border-radius:12px;padding:14px;text-align:center;margin-bottom:12px}
-    .champion .trophy{font-size:32px;display:block;margin-bottom:5px}
-    .champion .title{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em}
-    .champion .name{font-size:20px;font-weight:900;color:#fff;margin:3px 0}
-    .champion .congrats{font-size:11px;color:var(--gold);opacity:.8}
+    .champion .trophy{font-size:calc(var(--font-scale,1)*32px);display:block;margin-bottom:5px}
+    .champion .title{font-size:calc(var(--font-scale,1)*10px);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em}
+    .champion .name{font-size:calc(var(--font-scale,1)*20px);font-weight:900;color:#fff;margin:3px 0}
+    .champion .congrats{font-size:calc(var(--font-scale,1)*11px);color:var(--gold);opacity:.8}
     /* Pool colors */
     .p0{background:var(--blue-l);color:var(--blue)}.p1{background:var(--green-l);color:var(--green)}
     .p2{background:#fff0e8;color:#c8600a}[data-theme="dark"] .p2{background:#3d1a00;color:#e8922a}
     .p3{background:#f0e8ff;color:#7040c0}[data-theme="dark"] .p3{background:#1a003d;color:#a06be8}
     .waiting{text-align:center;padding:40px 20px;color:var(--text3)}
-    .waiting .ico{font-size:40px;margin-bottom:10px;display:block;animation:spin 3s linear infinite}
+    .waiting .ico{font-size:calc(var(--font-scale,1)*40px);margin-bottom:10px;display:block;animation:spin 3s linear infinite}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -170,6 +170,7 @@ async function initSupabase(){
         const parsed = JSON.parse(payload.new.payload);
         state = parsed;
         applyTheme();
+        if(state.fontScale) applyFontScale(state.fontScale);
         render();
         showConnected();
       }catch(e){ console.warn('Parse error:', e); }
@@ -201,6 +202,7 @@ async function fetchState(){
         _lastUpdatedAt=newAt;
         state=JSON.parse(data[0].payload);
         applyTheme();
+        if(state.fontScale) applyFontScale(state.fontScale);
         render();
       }
     }
@@ -306,6 +308,10 @@ function getKOBracket(){
 }
 
 // ── RENDER
+function applyFontScale(z){
+  document.documentElement.style.setProperty('--font-scale',z);
+}
+
 function render(){
   if(state&&state.cats&&state.cats.length>=1){
     // Respect smartphoneEnabled flag
@@ -381,14 +387,18 @@ function renderResultats(){
     c.matches.forEach(ref=>{
       const m=state.poolMatches?.[ref.pi]?.[ref.mi];if(!m) return;
       const tc=TC[(ref.terrain||0)%TC.length];
-      const score=`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`;
-      const scoreCls=isCur&&!isDone?'sr-score live':'sr-score';
+      const hs=parseInt(m.hs)||0,as=parseInt(m.as)||0;
+      const matchStarted=!!(m.started);
+      const scoreCls=matchStarted?'sr-score live':m.played?'sr-score':isCur&&!isDone?'sr-score live':'sr-score';
+      const scoreStr=m.played?hs+' : '+as:matchStarted?hs+' : '+as:'? : ?';
+      const encoursBadge=matchStarted&&!m.played?'<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>':''; 
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
+        ${encoursBadge}
         <div class="sr-teams">
           <span class="sr-team right">${m.home}</span>
-          <span class="${scoreCls}">${score}</span>
+          <span class="${scoreCls}">${scoreStr}</span>
           <span class="sr-team">${m.away}</span>
         </div>
       </div>`;
@@ -442,13 +452,14 @@ function koRound(title,matches,done,active,time){
     const km=state.km?.[m.id];
     const mDone=km?.played===true;
     const hs=parseInt(km?.hs)||0,as2=parseInt(km?.as)||0;
-    const inProgress=!mDone&&km&&(hs>0||as2>0);
+    const inProgress=!mDone&&km?.started===true;
     const w=mDone?getW(m.id,m.t1,m.t2):'';
     const score=mDone?`${hs} : ${as2}`:inProgress?`${hs} : ${as2}`:'? : ?';
+    const terrain=getKOTerrainM(0,m.id);const tc=terrain!==null?TC[terrain%TC.length]:null;
+    const tBadge=tc?`<span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">T${terrain+1}</span>`:'';
     const encoursBadge=inProgress?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 5px;border-radius:3px">En cours</span>`:'';
     html+=`<div class="ko-match-row">
-      <span class="ko-lvl">${m.label}</span>
-      ${encoursBadge}
+      ${tBadge}<span class="ko-lvl">${m.label}</span>${encoursBadge}
       <span class="ko-team right" style="${w===m.t1?'color:var(--green)':''}">${esc(m.t1)||'?'}</span>
       <span class="ko-score${mDone?' done':inProgress?' live':''}">${score}</span>
       <span class="ko-team" style="${w===m.t2?'color:var(--green)':''}">${esc(m.t2)||'?'}</span>
@@ -588,15 +599,21 @@ function renderResultatsDual(st){
         const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
         if(m){home=m.home;away=m.away;hs=parseInt(m.hs)||0;as2=parseInt(m.as)||0;played=m.played;}
       }
-      const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
+      let matchStarted2=false;
+      if(isKO){matchStarted2=!!(cat?.km?.[ref.koId]?.started);}
+      else{matchStarted2=!!(cat?.poolMatches?.[ref.pi]?.[ref.mi]?.started);}
+      const scoreCls=matchStarted2?'sr-score live':played?'sr-score':isCurrent&&!isDone?'sr-score live':'sr-score';
       const lvlLabel=isKO?(ref.compLevel||ref.label||'KO'):(`Poule ${PL[ref.pi]||''}`);
       const lvlCls=isKO?'sr-ko':'sr-pool';
+      const encoursBadge2=matchStarted2&&!played?'<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>':''; 
+      const scoreStr2=played?hs+' : '+as2:matchStarted2?hs+' : '+as2:'? : ?';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge ${lvlCls}" style="flex-shrink:0">${lvlLabel}</span>
+        ${encoursBadge2}
         <div class="sr-teams">
           <span class="sr-team right">${esc(home)}</span>
-          <span class="${scoreCls}">${played?hs+' : '+as2:'? : ?'}</span>
+          <span class="${scoreCls}">${scoreStr2}</span>
           <span class="sr-team">${esc(away)}</span>
         </div>
       </div>`;
@@ -698,7 +715,7 @@ function getKOTerrainM(ci,koId){
   if(!state?.globalKOCreneaux) return null;
   for(const cren of state.globalKOCreneaux){
     if(cren.ci!==ci&&cren.ci!==-1) continue;
-    const m=cren.matches?.find(m=>m.koId===koId&&(m.ci===ci||cren.ci===-1));
+    const m=cren.matches?.find(m=>m.koId===koId&&(cren.ci===-1?m.ci===ci:true));
     if(m!=null) return m.terrain??null;
   }
   return null;
@@ -722,7 +739,7 @@ function koRoundM(ci,cat,title,matches,done,active,col){
   matches.forEach(m=>{
     const km=cat.km?.[m.id];const played=km?.played===true;
     const h=parseInt(km?.hs)||0,a=parseInt(km?.as)||0;
-    const inProgress=!played&&km&&(h>0||a>0);
+    const inProgress=!played&&km?.started===true;
     let sc=played?`${h} : ${a}`:inProgress?`${h} : ${a}`:'? : ?';
     if(played&&h===a&&km?.hp!==undefined&&km?.hp!=='') sc+=` (${km.hp}-${km.ap})`;
     const t1=m.t1||'?',t2=m.t2||'?';const w=played?getWC(cat,m.id,t1,t2):'';
