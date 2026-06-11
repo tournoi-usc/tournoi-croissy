@@ -481,6 +481,7 @@ function renderDualCatMobile(st){
     if(!finaleActive){const ft=document.querySelector('.tabs .tab:last-child');if(ft) ft.click();}
     renderFinaleDual(st);
     renderClassementsComplet(st);
+    renderResultatsDual(st); // ← garder les résultats visibles en phase KO
   } else {
     renderClassementsDual(st);
     renderResultatsDual(st);
