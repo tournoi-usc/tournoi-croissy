@@ -98,6 +98,7 @@
   <div class="live-wrap">
     <div class="live-dot"></div>
     <span class="live-txt">LIVE</span>
+    <button id="web-theme-btn" onclick="toggleWebTheme()" style="margin-left:8px;background:rgba(255,255,255,.14);border:none;border-radius:7px;padding:3px 8px;color:#fff;cursor:pointer;font-size:12px;font-weight:600">☀️</button>
   </div>
 </div>
 
@@ -209,7 +210,22 @@ async function fetchState(){
   }catch(e){console.warn('Fetch error:',e);}
 }
 
-function applyTheme(){document.documentElement.setAttribute('data-theme',state?.theme||'dark');}
+function applyTheme(){/* thème display-web géré indépendamment */}
+
+let _webTheme='dark';
+try{const t=localStorage.getItem('web-theme');if(t) _webTheme=t;}catch(e){}
+function _applyWebTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const btn=document.getElementById('web-theme-btn');
+  if(btn) btn.textContent=t==='dark'?'☀️':'🌙';
+}
+function toggleWebTheme(){
+  _webTheme=_webTheme==='dark'?'light':'dark';
+  try{localStorage.setItem('web-theme',_webTheme);}catch(e){}
+  _applyWebTheme(_webTheme);
+}
+// Init thème au chargement
+_applyWebTheme(_webTheme);
 
 function showTab(name,el){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -467,7 +483,6 @@ const _CM=['#2ecc71','#e67e22'];
 function bothPoolsDoneM(st){return st.cats.every(cat=>cat.poolMatches?.every(pms=>pms.every(m=>m.played)));}
 
 function renderDualCatMobile(st){
-  if(st.theme) document.documentElement.setAttribute('data-theme',st.theme);
   const sub=document.getElementById('hdr-sub');
   if(sub) sub.textContent=st.cats[activeCat]?.name||'--';
   updateCatButtons(st.cats);
