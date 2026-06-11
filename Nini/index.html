@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.0.6</title>
+  <title>Tournoi Nini — Live v7.0.5</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -578,21 +578,32 @@ function renderResultatsDual(st){
       ${isDone?'✓':isCurrent?'▶':ci2+'.'} C${ci2} ${c.startTime?'· '+c.startTime:''}${liveTag}
       <span style="background:${catCol};color:#fff;font-size:8px;font-weight:800;padding:1px 6px;border-radius:3px;margin-left:5px">${esc(cat?.name||'?')}</span>
     </div>`;
+    // Pré-calculer le bracket pour résoudre t1/t2 des matchs KO
+    const _bracket=c.isKO&&cat?buildBracketCat(cat):null;
+    const _bracketMap={};
+    if(_bracket){
+      [..._bracket.qf,..._bracket.sf,..._bracket.sfl,..._bracket.finals].forEach(m=>{_bracketMap[m.id]={t1:m.t1,t2:m.t2};});
+    }
     (matchesForCi||[]).forEach(ref=>{
       const tc=TC[(ref.terrain||0)%TC.length];
       const isKO=c.isKO;
       let home='?',away='?',hs=0,as2=0,played=false;
       if(isKO){
-        const km=cat?.km?.[ref.koId];
-        home=ref.t1||'?';away=ref.t2||'?';
+        const refCat=st.cats?.[ref.ci!==undefined?ref.ci:activeCat];
+        const km=refCat?.km?.[ref.koId];
+        // Résoudre t1/t2 depuis le bracket de la bonne cat
+        const refBracket=ref.ci!==undefined&&ref.ci!==activeCat?buildBracketCat(refCat):_bracket;
+        const bm=refBracket?[...refBracket.qf,...refBracket.sf,...refBracket.sfl,...refBracket.finals].find(m=>m.id===ref.koId):null;
+        home=bm?.t1||ref.t1||'?';away=bm?.t2||ref.t2||'?';
         if(km?.played){hs=parseInt(km.hs)||0;as2=parseInt(km.as)||0;played=true;}
+        else if(km?.started){hs=parseInt(km.hs)||0;as2=parseInt(km.as)||0;}
       } else {
         const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
         if(m){home=m.home;away=m.away;hs=parseInt(m.hs)||0;as2=parseInt(m.as)||0;played=m.played;}
       }
       // started → badge "En cours" + score live avant validation
       let matchStarted=false;
-      if(isKO){matchStarted=!!(cat?.km?.[ref.koId]?.started);}
+      if(isKO){const refCat2=st.cats?.[ref.ci!==undefined?ref.ci:activeCat];matchStarted=!!(refCat2?.km?.[ref.koId]?.started);}
       else{matchStarted=!!(cat?.poolMatches?.[ref.pi]?.[ref.mi]?.started);}
       const scoreCls=played?'sr-score':matchStarted?'sr-score live':isCurrent&&!isDone?'sr-score live':'sr-score';
       const scoreStr=played?hs+' : '+as2:matchStarted?hs+' : '+as2:'? : ?';
