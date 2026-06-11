@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.1.0</title>
+  <title>Tournoi Nini — Live v7.0.5</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -387,18 +387,15 @@ function renderResultats(){
     c.matches.forEach(ref=>{
       const m=state.poolMatches?.[ref.pi]?.[ref.mi];if(!m) return;
       const tc=TC[(ref.terrain||0)%TC.length];
-      const mStarted=!!(m.started);
-      const scoreCls=m.played?'sr-score':mStarted?'sr-score live':isCur&&!isDone?'sr-score live':'sr-score';
-      const scoreStr=m.played||mStarted?`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`:'? : ?';
-      const encoursBadge=mStarted&&!m.played?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>`:'';
+      const score=`${parseInt(m.hs)||0} : ${parseInt(m.as)||0}`;
+      const scoreCls=isCur&&!isDone?'sr-score live':'sr-score';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge sr-pool" style="flex-shrink:0">Poule ${PL[ref.pi]||''}</span>
-        ${encoursBadge}
         <div class="sr-teams">
-          <span class="sr-team right">${esc(m.home)}</span>
-          <span class="${scoreCls}">${scoreStr}</span>
-          <span class="sr-team">${esc(m.away)}</span>
+          <span class="sr-team right">${m.home}</span>
+          <span class="${scoreCls}">${score}</span>
+          <span class="sr-team">${m.away}</span>
         </div>
       </div>`;
     });
@@ -589,22 +586,15 @@ function renderResultatsDual(st){
         const m=cat?.poolMatches?.[ref.pi]?.[ref.mi];
         if(m){home=m.home;away=m.away;hs=parseInt(m.hs)||0;as2=parseInt(m.as)||0;played=m.played;}
       }
-      // started → badge "En cours" + score live avant validation
-      let matchStarted=false;
-      if(isKO){matchStarted=!!(cat?.km?.[ref.koId]?.started);}
-      else{matchStarted=!!(cat?.poolMatches?.[ref.pi]?.[ref.mi]?.started);}
-      const scoreCls=played?'sr-score':matchStarted?'sr-score live':isCurrent&&!isDone?'sr-score live':'sr-score';
-      const scoreStr=played?hs+' : '+as2:matchStarted?hs+' : '+as2:'? : ?';
-      const encoursBadge=matchStarted&&!played?`<span style="font-size:8px;font-weight:800;color:#ff8c00;background:rgba(255,140,0,.15);padding:1px 4px;border-radius:3px;flex-shrink:0">En cours</span>`:'';
+      const scoreCls=isCurrent&&!isDone?'sr-score live':'sr-score';
       const lvlLabel=isKO?(ref.compLevel||ref.label||'KO'):(`Poule ${PL[ref.pi]||''}`);
       const lvlCls=isKO?'sr-ko':'sr-pool';
       html+=`<div class="sched-row">
         <span style="background:${tc};color:#fff;font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;align-self:center">T${(ref.terrain||0)+1}</span>
         <span class="sr-badge ${lvlCls}" style="flex-shrink:0">${lvlLabel}</span>
-        ${encoursBadge}
         <div class="sr-teams">
           <span class="sr-team right">${esc(home)}</span>
-          <span class="${scoreCls}">${scoreStr}</span>
+          <span class="${scoreCls}">${played?hs+' : '+as2:'? : ?'}</span>
           <span class="sr-team">${esc(away)}</span>
         </div>
       </div>`;
