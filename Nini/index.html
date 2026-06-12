@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.0.5</title>
+  <title>Tournoi Nini — Live v7.1.0</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -84,6 +84,9 @@
     .waiting{text-align:center;padding:40px 20px;color:var(--text3)}
     .waiting .ico{font-size:40px;margin-bottom:10px;display:block;animation:spin 3s linear infinite}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    /* ── PULSATION ligne active */
+    @keyframes rowPulse{0%,100%{background:transparent}50%{background:rgba(240,192,64,.13)}}
+    .sched-row.live-pulse,.ko-match-row.live-pulse{animation:rowPulse 1.6s ease-in-out infinite}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -211,6 +214,18 @@ async function fetchState(){
 }
 
 function applyTheme(){/* thème display-web géré indépendamment */}
+
+// ── PULSATION ligne active (display-web)
+function applyLivePulseWeb(){
+  document.querySelectorAll('.sched-row.live-pulse,.ko-match-row.live-pulse').forEach(el=>el.classList.remove('live-pulse'));
+  const ac=[...(state.globalCreneaux||[]),...(state.globalKOCreneaux||[])];
+  const cc=ac[state.currentCreneau];
+  if(!cc||cc.done) return;
+  document.querySelectorAll('.sched-hdr.active,.ko-round-hdr.active').forEach(hdr=>{
+    const parent=hdr.parentElement;
+    if(parent) parent.querySelectorAll('.sched-row,.ko-match-row').forEach(r=>r.classList.add('live-pulse'));
+  });
+}
 
 let _webTheme='dark';
 try{const t=localStorage.getItem('web-theme');if(t) _webTheme=t;}catch(e){}
@@ -340,13 +355,16 @@ function render(){
     const cc=ac[state.currentCreneau];
     const liveDot=document.querySelector('.live-dot');
     if(liveDot) liveDot.style.background=cc&&cc.type==='match'&&!cc.done?'#ff4444':'#888';
-    renderDualCatMobile(state);return;
+    renderDualCatMobile(state);
+    applyLivePulseWeb();
+    return;
   }
   if(!state||!state.poolList?.length) return;
   document.getElementById('hdr-sub').textContent=`${state.N} équipes · ${state.poolList.length} poule(s)`;
   renderClassements();
   renderResultats();
   renderFinale();
+  applyLivePulseWeb();
 }
 
 function renderClassements(){
