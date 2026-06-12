@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.1.0</title>
+  <title>Tournoi Nini — Live v7.2.0</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -87,10 +87,14 @@
     /* ── PULSATION ligne active */
     @keyframes rowPulse{0%,100%{background:transparent}50%{background:rgba(240,192,64,.13)}}
     .sched-row.live-pulse,.ko-match-row.live-pulse{animation:rowPulse 1.6s ease-in-out infinite}
+    /* ── CUSTOM BACKGROUND LAYER ── */
+    #custom-bg-layer{position:fixed;inset:0;z-index:-1;pointer-events:none;transition:opacity .3s ease}
+    html.has-custom-bg,html.has-custom-bg body{background:transparent!important}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<div id="custom-bg-layer"></div>
 
 <div class="hdr">
   <img src="logo.png" alt="USC" onerror="this.style.display='none'">
@@ -174,6 +178,7 @@ async function initSupabase(){
         const parsed = JSON.parse(payload.new.payload);
         state = parsed;
         applyTheme();
+        applyBgFromState();
         if(state.fontScale) applyFontScale(state.fontScale);
         render();
         showConnected();
@@ -206,6 +211,7 @@ async function fetchState(){
         _lastUpdatedAt=newAt;
         state=JSON.parse(data[0].payload);
         applyTheme();
+        applyBgFromState();
         if(state.fontScale) applyFontScale(state.fontScale);
         render();
       }
@@ -214,6 +220,26 @@ async function fetchState(){
 }
 
 function applyTheme(){/* thème display-web géré indépendamment */}
+
+// ── Fond d'écran personnalisé
+function _bgCSS(cfg){
+  if(!cfg||cfg.type==='none'||!cfg.type) return null;
+  if(cfg.type==='color') return {bg:cfg.c1||'#1a1a2e',op:cfg.opacity??1};
+  if(cfg.type==='gradient') return {bg:`linear-gradient(${cfg.angle||135}deg, ${cfg.c1||'#1a1a2e'}, ${cfg.c2||'#16213e'})`,op:cfg.opacity??1};
+  if(cfg.type==='image'&&cfg.url) return {bg:`url('${cfg.url.replace(/'/g,"%27")}') center/cover no-repeat`,op:cfg.opacity??1};
+  return null;
+}
+function applyCustomBgWeb(cfg){
+  const layer=document.getElementById('custom-bg-layer');if(!layer) return;
+  const r=_bgCSS(cfg);
+  if(!r){layer.style.background='';layer.style.opacity='1';document.documentElement.classList.remove('has-custom-bg');try{localStorage.removeItem('web-bg');}catch(e){}return;}
+  layer.style.background=r.bg;layer.style.opacity=r.op;
+  document.documentElement.classList.add('has-custom-bg');
+  try{localStorage.setItem('web-bg',JSON.stringify(cfg));}catch(e){}
+}
+function applyBgFromState(){if(state?.bg?.web) applyCustomBgWeb(state.bg.web);}
+// Restore saved bg before first fetch completes
+try{const b=localStorage.getItem('web-bg');if(b) applyCustomBgWeb(JSON.parse(b));}catch(e){}
 
 // ── PULSATION ligne active (display-web)
 function applyLivePulseWeb(){
