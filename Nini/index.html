@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
-  <title>Tournoi Nini — Live v7.2.0</title>
+  <title>Tournoi Nini — Live v7.3.0</title>
   <style>
     :root{--bg:#f4f6f8;--bg2:#fff;--bg3:#f0f3f6;--border:#e0e4ea;--text:#1a1a1a;--text2:#555;--text3:#999;--green:#1a7a3c;--green-l:#e8f5ed;--gold:#b8860b;--gold-l:#fdf6e3;--blue:#1a5fa8;--blue-l:#e8f0fb;}
     [data-theme="dark"]{--bg:#0f1117;--bg2:#1a1d27;--bg3:#232638;--border:#2e3348;--text:#e8eaf0;--text2:#9aa0b8;--text3:#555e78;--green:#2ecc71;--green-l:#0d2b1a;--gold:#f0c040;--gold-l:#2a2000;--blue:#5b9cf6;--blue-l:#0d1e3a;}
@@ -222,20 +222,26 @@ async function fetchState(){
 function applyTheme(){/* thème display-web géré indépendamment */}
 
 // ── Fond d'écran personnalisé
-function _bgCSS(cfg){
+function _bgCSS(cfg,useWeb){
   if(!cfg||cfg.type==='none'||!cfg.type) return null;
   if(cfg.type==='color') return {bg:cfg.c1||'#1a1a2e',op:cfg.opacity??1};
   if(cfg.type==='gradient') return {bg:`linear-gradient(${cfg.angle||135}deg, ${cfg.c1||'#1a1a2e'}, ${cfg.c2||'#16213e'})`,op:cfg.opacity??1};
   if(cfg.type==='image'&&cfg.url) return {bg:`url('${cfg.url.replace(/'/g,"%27")}') center/cover no-repeat`,op:cfg.opacity??1};
+  if(cfg.type==='file'){
+    const u=useWeb?(cfg.urlWeb||cfg.urlFull):(cfg.urlFull||cfg.urlWeb);
+    if(!u) return null;
+    return {bg:`url('${u}') center/cover no-repeat`,op:cfg.opacity??1};
+  }
   return null;
 }
 function applyCustomBgWeb(cfg){
   const layer=document.getElementById('custom-bg-layer');if(!layer) return;
-  const r=_bgCSS(cfg);
+  const r=_bgCSS(cfg,true);
   if(!r){layer.style.background='';layer.style.opacity='1';document.documentElement.classList.remove('has-custom-bg');try{localStorage.removeItem('web-bg');}catch(e){}return;}
   layer.style.background=r.bg;layer.style.opacity=r.op;
   document.documentElement.classList.add('has-custom-bg');
-  try{localStorage.setItem('web-bg',JSON.stringify(cfg));}catch(e){}
+  const toStore=cfg.type==='file'?{type:'file',urlWeb:cfg.urlWeb,opacity:cfg.opacity}:cfg;
+  try{localStorage.setItem('web-bg',JSON.stringify(toStore));}catch(e){}
 }
 function applyBgFromState(){if(state?.bg?.web) applyCustomBgWeb(state.bg.web);}
 // Restore saved bg before first fetch completes
@@ -247,6 +253,11 @@ function applyLivePulseWeb(){
   const ac=[...(state.globalCreneaux||[]),...(state.globalKOCreneaux||[])];
   const cc=ac[state.currentCreneau];
   if(!cc||cc.done) return;
+  // Vérifier que ce créneau concerne la cat affichée
+  const concerns=cc.isMixed
+    ?(cc.matches||[]).some(m=>m.ci===activeCat)
+    :(cc.ci===activeCat);
+  if(!concerns) return;
   document.querySelectorAll('.sched-hdr.active,.ko-round-hdr.active').forEach(hdr=>{
     const parent=hdr.parentElement;
     if(parent) parent.querySelectorAll('.sched-row,.ko-match-row').forEach(r=>r.classList.add('live-pulse'));
@@ -710,14 +721,30 @@ function renderFinaleDual(st){
     const qfDone=bracket.qf.every(m=>cat.km?.[m.id]?.played);
     const sfAll=[...bracket.sf,...bracket.sfl],sfDone=sfAll.every(m=>cat.km?.[m.id]?.played);
     const finDone=bracket.finals.every(m=>cat.km?.[m.id]?.played);
-    html+=koRoundM(ci,cat,'⚡ Quarts de finale',bracket.qf,qfDone,!qfDone,col);
-    html+=koRoundM(ci,cat,'⚡ Demi-finales',sfAll,sfDone,qfDone&&!sfDone,col);
+
+    // Déterminer le round actif pour CETTE cat via le créneau courant global
+    const ac=[...(st.globalCreneaux||[]),...(st.globalKOCreneaux||[])];
+    const cc=ac[st.currentCreneau];
+    const ccForCi=cc&&!cc.done&&(
+      cc.isMixed?(cc.matches||[]).some(m=>m.ci===ci):(cc.ci===ci)
+    );
+    let activeKORound=null;
+    if(ccForCi&&cc.isKO){
+      const koIds=(cc.matches||[]).filter(m=>cc.isMixed?m.ci===ci:true).map(m=>m.koId);
+      if(koIds.some(id=>bracket.qf.some(m=>m.id===id))) activeKORound='qf';
+      else if(koIds.some(id=>[...bracket.sf,...bracket.sfl].some(m=>m.id===id))) activeKORound='sf';
+      else if(koIds.some(id=>bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet').some(m=>m.id===id))) activeKORound='consol';
+      else if(koIds.some(id=>bracket.finals.filter(m=>m.id==='final'||m.id==='third').some(m=>m.id===id))) activeKORound='main';
+    }
+
     const consolMW=bracket.finals.filter(m=>m.id==='consolef'||m.id==='consolet');
     const mainMW  =bracket.finals.filter(m=>m.id==='final'   ||m.id==='third');
     const consolDW=consolMW.every(m=>cat.km?.[m.id]?.played);
     const mainDW  =mainMW.every(m=>cat.km?.[m.id]?.played);
-    html+=koRoundM(ci,cat,'🏅 Consolante',consolMW,consolDW,sfDone&&!consolDW,col);
-    html+=koRoundM(ci,cat,'🏆 Finale',    mainMW,  mainDW,  sfDone&&consolDW&&!mainDW,col);
+    html+=koRoundM(ci,cat,'⚡ Quarts de finale',bracket.qf,qfDone,activeKORound==='qf',col);
+    html+=koRoundM(ci,cat,'⚡ Demi-finales',sfAll,sfDone,activeKORound==='sf',col);
+    html+=koRoundM(ci,cat,'🏅 Consolante',consolMW,consolDW,activeKORound==='consol',col);
+    html+=koRoundM(ci,cat,'🏆 Finale',    mainMW,  mainDW,  activeKORound==='main',col);
   });
   el.innerHTML=any?html:'<div class="waiting"><span class="ico">⚡</span>En attente des poules...</div>';
 }
